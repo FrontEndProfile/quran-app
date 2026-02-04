@@ -1,15 +1,12 @@
 import type { Settings } from '../types';
-import { DEFAULT_RECITER_ID, DEFAULT_URDU_AUDIO_ID } from '../constants';
-
-const STORAGE_KEY = 'quran-urdu-player:settings:v2';
+import { DEFAULT_ARABIC_FONT_PX, DEFAULT_RECITER_ID, DEFAULT_URDU_FONT_PX, SETTINGS_STORAGE_KEY } from '../constants';
 
 const DEFAULT_SETTINGS: Settings = {
-  theme: 'warm',
-  arabicFontSize: 36,
-  urduFontSize: 20,
+  arabicFontPx: DEFAULT_ARABIC_FONT_PX,
+  urduFontPx: DEFAULT_URDU_FONT_PX,
   reciterId: DEFAULT_RECITER_ID,
-  urduAudioId: DEFAULT_URDU_AUDIO_ID,
-  translationId: null
+  theme: 'warm',
+  repeat: false
 };
 
 export class SettingsService {
@@ -44,7 +41,7 @@ export class SettingsService {
 
   private load(): Settings {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (!raw) return { ...DEFAULT_SETTINGS };
       const parsed = JSON.parse(raw) as Partial<Settings>;
       return { ...DEFAULT_SETTINGS, ...parsed };
@@ -54,6 +51,6 @@ export class SettingsService {
   }
 
   private persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.settings));
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(this.settings));
   }
 }

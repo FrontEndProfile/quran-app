@@ -1,0 +1,50 @@
+import type { Bookmark, Chapter, PlaybackState, Settings, TabMode, VerseData } from '../types';
+
+export interface AppState {
+  currentMode: TabMode;
+  currentSelection: number | null;
+  verses: VerseData[];
+  playbackState: PlaybackState;
+  settings: Settings;
+  bookmarks: Bookmark[];
+  chapters: Chapter[];
+  translatorName: string;
+  translationId: number | null;
+  playerVisible: boolean;
+  settingsOpen: boolean;
+  loading: boolean;
+  error: string;
+}
+
+type Listener = (state: AppState) => void;
+
+type Updater = (state: AppState) => AppState;
+
+export function createStore(initialState: AppState) {
+  let state = initialState;
+  const listeners = new Set<Listener>();
+
+  const getState = () => state;
+
+  const setState = (nextState: AppState) => {
+    state = nextState;
+    listeners.forEach((listener) => listener(state));
+  };
+
+  const update = (updater: Updater) => {
+    setState(updater(state));
+  };
+
+  const subscribe = (listener: Listener) => {
+    listeners.add(listener);
+    listener(state);
+    return () => listeners.delete(listener);
+  };
+
+  return {
+    getState,
+    setState,
+    update,
+    subscribe
+  };
+}

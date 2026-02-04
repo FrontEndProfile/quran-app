@@ -1,20 +1,36 @@
-import type { PlaybackStage, PlayerState, VerseData } from '../types';
+import type { PlaybackState, VerseData } from '../types';
+
+export type PlaybackPhase = 'idle' | 'arabic' | 'urdu';
+
+type StateListener = (state: PlaybackState) => void;
+
+type NoticeListener = (message: string) => void;
+
+type ProgressListener = (payload: {
+  phase: 'arabic' | 'urdu';
+  currentIndex: number;
+  currentTime: number;
+  duration: number;
+}) => void;
 
 export class PlayerService {
   private queue: VerseData[] = [];
-  private state: PlayerState = {
+  private state: PlaybackState = {
     status: 'idle',
     currentIndex: 0,
-    stage: 'idle'
+    phase: 'arabic',
+    isPlaying: false
   };
-  private listeners = new Set<(state: PlayerState) => void>();
+  private listeners = new Set<StateListener>();
+  private noticeListeners = new Set<NoticeListener>();
+  private progressListeners = new Set<ProgressListener>();
   private audio = new Audio();
   private arabicBase = '';
   private urduBase = '';
-  private fallbackDelayMs = 800;
   private playToken = 0;
-  private pausedStage: PlaybackStage = 'idle';
   private delayTimeoutId: number | null = null;
+  private pausedPhase: PlaybackPhase = 'idle';
+  private repeat = false;
 
   constructor() {
     this.audio.preload = 'auto';
@@ -25,33 +41,39 @@ export class PlayerService {
     this.urduBase = normalizeBase(urduBase);
   }
 
-  setQueue(queue: VerseData[]) {
+  setRepeat(value: boolean) {
+    this.repeat = value;
+  }
+
+  loadPlaylist(queue: VerseData[]) {
     this.stopInternal();
     this.queue = queue;
     this.state = {
-      status: 'stopped',
+      status: queue.length ? 'stopped' : 'idle',
       currentIndex: 0,
-      stage: 'idle'
+      phase: 'arabic',
+      isPlaying: false
     };
     this.notify();
   }
 
-  restartCurrent() {
-    if (!this.queue.length) return;
-    this.cancelPlayback();
-    this.state.stage = 'idle';
-    if (this.state.status === 'playing') {
-      this.playCurrent();
-    }
-  }
-
-  subscribe(listener: (state: PlayerState) => void): () => void {
+  subscribe(listener: StateListener): () => void {
     this.listeners.add(listener);
     listener({ ...this.state });
     return () => this.listeners.delete(listener);
   }
 
-  getState(): PlayerState {
+  onNotice(listener: NoticeListener): () => void {
+    this.noticeListeners.add(listener);
+    return () => this.noticeListeners.delete(listener);
+  }
+
+  onProgress(listener: ProgressListener): () => void {
+    this.progressListeners.add(listener);
+    return () => this.progressListeners.delete(listener);
+  }
+
+  getState(): PlaybackState {
     return { ...this.state };
   }
 
@@ -66,6 +88,20 @@ export class PlayerService {
       return;
     }
     this.state.status = 'playing';
+    this.state.isPlaying = true;
+    this.notify();
+    this.playCurrent();
+  }
+
+  playFromIndex(index: number) {
+    if (!this.queue.length) return;
+    this.clearAudio(true);
+    this.clearDelay();
+    this.pausedPhase = 'idle';
+    this.state.currentIndex = clampIndex(index, this.queue.length);
+    this.state.status = 'playing';
+    this.state.phase = 'arabic';
+    this.state.isPlaying = true;
     this.notify();
     this.playCurrent();
   }
@@ -73,30 +109,32 @@ export class PlayerService {
   pause() {
     if (this.state.status !== 'playing') return;
 
-    if (this.state.stage === 'arabic' || this.state.stage === 'urdu') {
+    if (this.state.phase === 'arabic' || this.state.phase === 'urdu') {
       this.audio.pause();
-      this.pausedStage = this.state.stage;
-    } else if (this.state.stage === 'text') {
+      this.pausedPhase = this.state.phase;
+    } else {
       this.clearDelay();
-      this.pausedStage = 'text';
+      this.pausedPhase = 'idle';
     }
 
     this.state.status = 'paused';
+    this.state.isPlaying = false;
     this.notify();
   }
 
   resume() {
     if (this.state.status !== 'paused') return;
     this.state.status = 'playing';
+    this.state.isPlaying = true;
     this.notify();
 
-    if (this.pausedStage === 'arabic' || this.pausedStage === 'urdu') {
-      this.audio.play().catch(() => this.handleAudioError());
+    if (this.pausedPhase === 'arabic') {
+      this.audio.play().catch(() => this.handleArabicError());
       return;
     }
 
-    if (this.pausedStage === 'text') {
-      this.scheduleTextFallback();
+    if (this.pausedPhase === 'urdu') {
+      this.audio.play().catch(() => this.handleUrduError());
       return;
     }
 
@@ -104,37 +142,56 @@ export class PlayerService {
   }
 
   stop() {
-    this.cancelPlayback();
-    if (!this.queue.length) {
-      this.stopInternal();
-      return;
-    }
+    this.clearAudio(true);
+    this.clearDelay();
     this.state = {
       ...this.state,
-      status: 'stopped',
-      currentIndex: 0,
-      stage: 'idle'
+      status: this.queue.length ? 'stopped' : 'idle',
+      isPlaying: false
     };
+    this.pausedPhase = 'idle';
     this.notify();
+  }
+
+  prevSurah(): boolean {
+    return this.jumpSurah(-1);
+  }
+
+  nextSurah(): boolean {
+    return this.jumpSurah(1);
   }
 
   next() {
     if (!this.queue.length) return;
-    this.cancelPlayback();
-    this.state.currentIndex = Math.min(this.state.currentIndex + 1, this.queue.length - 1);
-    this.state.stage = 'idle';
+    this.clearAudio(true);
+    this.clearDelay();
+    this.pausedPhase = 'idle';
+    this.state.currentIndex = clampIndex(this.state.currentIndex + 1, this.queue.length);
+    this.state.phase = 'arabic';
+    this.state.status = 'playing';
+    this.state.isPlaying = true;
     this.notify();
-    if (this.state.status === 'playing') {
-      this.playCurrent();
-    }
+    this.playCurrent();
   }
 
   prev() {
     if (!this.queue.length) return;
-    this.cancelPlayback();
-    this.state.currentIndex = Math.max(this.state.currentIndex - 1, 0);
-    this.state.stage = 'idle';
+    this.clearAudio(true);
+    this.clearDelay();
+    this.pausedPhase = 'idle';
+    this.state.currentIndex = clampIndex(this.state.currentIndex - 1, this.queue.length);
+    this.state.phase = 'arabic';
+    this.state.status = 'playing';
+    this.state.isPlaying = true;
     this.notify();
+    this.playCurrent();
+  }
+
+  restartCurrent() {
+    if (!this.queue.length) return;
+    this.clearAudio(true);
+    this.clearDelay();
+    this.state.phase = 'arabic';
     if (this.state.status === 'playing') {
       this.playCurrent();
     }
@@ -150,10 +207,11 @@ export class PlayerService {
 
     this.playToken += 1;
     const token = this.playToken;
-    this.state.stage = 'arabic';
+    this.state.phase = 'arabic';
     this.notify();
 
-    const url = buildUrl(this.arabicBase, verse.fileKey);
+    const url = buildUrl(this.arabicBase, verse.key);
+    this.clearAudioHandlers();
     this.audio.src = url;
     this.audio.onended = () => {
       if (token !== this.playToken) return;
@@ -161,24 +219,31 @@ export class PlayerService {
     };
     this.audio.onerror = () => {
       if (token !== this.playToken) return;
-      this.playUrdu(verse);
+      this.handleArabicError();
     };
-
-    this.preloadNext(this.state.currentIndex + 1);
+    this.audio.onloadedmetadata = () => {
+      if (token !== this.playToken) return;
+      this.emitProgress();
+    };
+    this.audio.ontimeupdate = () => {
+      if (token !== this.playToken) return;
+      this.emitProgress();
+    };
 
     this.audio.play().catch(() => {
       if (token !== this.playToken) return;
-      this.playUrdu(verse);
+      this.handleArabicError();
     });
   }
 
   private playUrdu(verse: VerseData) {
     if (this.state.status !== 'playing') return;
 
-    this.state.stage = 'urdu';
+    this.state.phase = 'urdu';
     this.notify();
 
-    const url = buildUrl(this.urduBase, verse.fileKey);
+    const url = buildUrl(this.urduBase, verse.key);
+    this.clearAudioHandlers();
     this.audio.src = url;
 
     const token = ++this.playToken;
@@ -188,67 +253,74 @@ export class PlayerService {
     };
     this.audio.onerror = () => {
       if (token !== this.playToken) return;
-      this.scheduleTextFallback();
+      this.handleUrduError();
+    };
+    this.audio.onloadedmetadata = () => {
+      if (token !== this.playToken) return;
+      this.emitProgress();
+    };
+    this.audio.ontimeupdate = () => {
+      if (token !== this.playToken) return;
+      this.emitProgress();
     };
 
     this.audio.play().catch(() => {
       if (token !== this.playToken) return;
-      this.scheduleTextFallback();
+      this.handleUrduError();
     });
   }
 
-  private scheduleTextFallback() {
-    this.state.stage = 'text';
-    this.notify();
+  private handleArabicError() {
+    const verse = this.queue[this.state.currentIndex];
+    if (!verse) return;
+    this.emitNotice(`Arabic audio missing for ${verse.surah}:${verse.ayah}. Trying Urdu.`);
+    this.playUrdu(verse);
+  }
+
+  private handleUrduError() {
+    const verse = this.queue[this.state.currentIndex];
+    if (!verse) return;
+    this.emitNotice(`Urdu audio missing for ${verse.surah}:${verse.ayah}. Skipping ahead.`);
+    this.scheduleAdvance(400);
+  }
+
+  private scheduleAdvance(delayMs: number) {
     this.clearDelay();
     this.delayTimeoutId = window.setTimeout(() => {
       if (this.state.status !== 'playing') return;
       this.advance();
-    }, this.fallbackDelayMs);
+    }, delayMs);
   }
 
   private advance() {
+    if (this.repeat) {
+      this.state.phase = 'arabic';
+      this.notify();
+      this.playCurrent();
+      return;
+    }
+
     const nextIndex = this.state.currentIndex + 1;
     if (nextIndex >= this.queue.length) {
       this.stop();
       return;
     }
     this.state.currentIndex = nextIndex;
-    this.state.stage = 'idle';
+    this.state.phase = 'arabic';
     this.notify();
     this.playCurrent();
   }
 
-  private preloadNext(index: number) {
-    const verse = this.queue[index];
-    if (!verse) return;
-    const nextArabic = new Audio();
-    nextArabic.preload = 'auto';
-    nextArabic.src = buildUrl(this.arabicBase, verse.fileKey);
-
-    const nextUrdu = new Audio();
-    nextUrdu.preload = 'auto';
-    nextUrdu.src = buildUrl(this.urduBase, verse.fileKey);
-  }
-
-  private handleAudioError() {
-    this.playUrdu(this.queue[this.state.currentIndex]);
-  }
-
-  private cancelPlayback() {
-    this.audio.pause();
-    this.audio.currentTime = 0;
-    this.clearDelay();
-  }
-
   private stopInternal() {
-    this.cancelPlayback();
+    this.clearAudio(true);
+    this.clearDelay();
     this.playToken += 1;
-    this.pausedStage = 'idle';
+    this.pausedPhase = 'idle';
     this.state = {
       status: 'idle',
       currentIndex: 0,
-      stage: 'idle'
+      phase: 'arabic',
+      isPlaying: false
     };
   }
 
@@ -259,10 +331,70 @@ export class PlayerService {
     }
   }
 
+  private clearAudioHandlers() {
+    this.audio.onended = null;
+    this.audio.onerror = null;
+    this.audio.ontimeupdate = null;
+    this.audio.onloadedmetadata = null;
+  }
+
+  private clearAudio(resetSrc: boolean) {
+    this.audio.pause();
+    this.audio.currentTime = 0;
+    this.clearAudioHandlers();
+    if (resetSrc) {
+      this.audio.src = '';
+    }
+  }
+
+  private jumpSurah(direction: -1 | 1): boolean {
+    if (!this.queue.length) return false;
+    const current = this.queue[this.state.currentIndex];
+    if (!current) return false;
+
+    const surahStarts: { surah: number; index: number }[] = [];
+    for (let i = 0; i < this.queue.length; i += 1) {
+      const verse = this.queue[i];
+      const prev = this.queue[i - 1];
+      if (!prev || verse.surah !== prev.surah) {
+        surahStarts.push({ surah: verse.surah, index: i });
+      }
+    }
+
+    const currentIndex = surahStarts.findIndex((entry) => entry.surah === current.surah);
+    if (currentIndex === -1) return false;
+
+    const target = surahStarts[currentIndex + direction];
+    if (!target) return false;
+
+    this.playFromIndex(target.index);
+    return true;
+  }
+
+  private emitNotice(message: string) {
+    this.noticeListeners.forEach((listener) => listener(message));
+  }
+
+  private emitProgress() {
+    if (this.state.status !== 'playing') return;
+    this.progressListeners.forEach((listener) =>
+      listener({
+        phase: this.state.phase,
+        currentIndex: this.state.currentIndex,
+        currentTime: this.audio.currentTime,
+        duration: this.audio.duration
+      })
+    );
+  }
+
   private notify() {
     const snapshot = { ...this.state };
     this.listeners.forEach((listener) => listener(snapshot));
   }
+}
+
+export function ayahFileKey(surah: number, ayah: number): string {
+  return `${String(surah).padStart(3, '0')}${String(ayah).padStart(3, '0')}`;
 }
 
 function normalizeBase(base: string): string {
@@ -271,4 +403,9 @@ function normalizeBase(base: string): string {
 
 function buildUrl(base: string, fileKey: string): string {
   return `${normalizeBase(base)}${fileKey}.mp3`;
+}
+
+function clampIndex(index: number, length: number) {
+  if (!length) return 0;
+  return Math.min(Math.max(index, 0), length - 1);
 }

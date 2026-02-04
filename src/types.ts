@@ -31,24 +31,31 @@ export interface VerseData {
   surah: number;
   ayah: number;
   verseKey: string;
-  fileKey: string;
+  key: string;
   arabicText: string;
   urduText: string;
 }
 
 export interface Settings {
-  theme: 'warm' | 'dark';
-  arabicFontSize: number;
-  urduFontSize: number;
+  arabicFontPx: number;
+  urduFontPx: number;
   reciterId: string;
-  urduAudioId: string;
-  translationId: number | null;
+  theme: 'warm' | 'dark';
+  repeat: boolean;
 }
 
-export type PlaybackStage = 'idle' | 'arabic' | 'urdu' | 'text';
-
-export interface PlayerState {
-  status: 'idle' | 'playing' | 'paused' | 'stopped';
+export interface PlaybackState {
+  isPlaying: boolean;
+  phase: 'arabic' | 'urdu';
   currentIndex: number;
-  stage: PlaybackStage;
+  status: 'idle' | 'playing' | 'paused' | 'stopped';
+}
+
+export interface Bookmark {
+  id: string;
+  mode: TabMode;
+  juzNumber?: number;
+  surahNumber: number;
+  ayahNumber: number;
+  timestamp: number;
 }
