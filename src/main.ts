@@ -1,6 +1,6 @@
 import './styles.css';
 import { QuranTextService, resolveUrduTranslation, stripHtml } from './services/quranTextService';
-import { PlayerService, ayahFileKey } from './services/playerService';
+import { PlayerService, ayahFileKey } from './services/PlayerService';
 import { SettingsService } from './services/SettingsService';
 import {
   ARABIC_RECITERS,
