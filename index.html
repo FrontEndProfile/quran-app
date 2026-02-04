@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quran Urdu Player</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;600&family=Amiri:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div>
+          <h1>Quran Urdu Player</h1>
+          <p class="subtitle">Arabic recitation + Urdu translation</p>
+        </div>
+        <div class="header-actions">
+          <button class="ghost" data-action="toggle-theme" id="themeToggle">Theme</button>
+        </div>
+      </header>
+
+      <section class="tabs">
+        <button class="tab" data-action="tab" data-tab="surah" id="tabSurah">Surah</button>
+        <button class="tab" data-action="tab" data-tab="juz" id="tabJuz">Juz</button>
+      </section>
+
+      <main class="layout">
+        <aside class="list-panel">
+          <div class="list-header" id="listHeader">Loading...</div>
+          <div class="list" id="listContainer"></div>
+        </aside>
+
+        <section class="reader-panel">
+          <div class="controls" id="controls"></div>
+          <div class="notice" id="notice"></div>
+          <div class="current-ayah" id="currentAyah"></div>
+          <div class="verses" id="versesContainer"></div>
+        </section>
+      </main>
+
+      <footer class="status-bar" id="statusBar"></footer>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
