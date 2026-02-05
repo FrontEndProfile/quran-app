@@ -11,5 +11,13 @@ export const elements = {
   playerBar: document.getElementById('playerBar') as HTMLDivElement,
   settingsDrawer: document.getElementById('settingsDrawer') as HTMLDivElement,
   settingsOverlay: document.getElementById('settingsOverlay') as HTMLDivElement,
-  settingsContent: document.getElementById('settingsContent') as HTMLDivElement
+  settingsContent: document.getElementById('settingsContent') as HTMLDivElement,
+  mobileNav: document.getElementById('mobileNav') as HTMLDivElement,
+  mobileNavOverlay: document.getElementById('mobileNavOverlay') as HTMLDivElement,
+  mobileTabSurah: document.getElementById('mobileTabSurah') as HTMLButtonElement,
+  mobileTabJuz: document.getElementById('mobileTabJuz') as HTMLButtonElement,
+  mobileTabBookmarks: document.getElementById('mobileTabBookmarks') as HTMLButtonElement,
+  mobileSurahList: document.getElementById('mobileSurahList') as HTMLDivElement,
+  mobileJuzList: document.getElementById('mobileJuzList') as HTMLDivElement,
+  mobileBookmarkList: document.getElementById('mobileBookmarkList') as HTMLDivElement
 };

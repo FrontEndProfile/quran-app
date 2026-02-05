@@ -17,6 +17,8 @@ export interface AppState {
   playerVisible: boolean;
   settingsOpen: boolean;
   speedMenuOpen: boolean;
+  mobileNavOpen: boolean;
+  mobileNavTab: 'surah' | 'juz' | 'bookmarks';
   loading: boolean;
   error: string;
 }

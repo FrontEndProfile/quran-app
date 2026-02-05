@@ -1,7 +1,7 @@
 import { ARABIC_RECITERS, URDU_TRANSLATOR_NAME, URDU_VOICE_NAME } from '../constants';
 import type { AppState } from './store';
 import { isBookmarked, sortBookmarks } from './bookmarks';
-import type { Bookmark, VerseData } from '../types';
+import type { Bookmark, VerseData, Settings } from '../types';
 import { elements } from './elements';
 
 let lastActiveIndex = -1;
@@ -297,6 +297,98 @@ export function renderBookmarks(bookmarks: Bookmark[]) {
     .join('');
 }
 
+export function renderMobileNav(state: AppState) {
+  if (elements.mobileNavOverlay && elements.mobileNav) {
+    elements.mobileNavOverlay.classList.toggle('hidden', !state.mobileNavOpen);
+    elements.mobileNav.classList.toggle('hidden', !state.mobileNavOpen);
+  }
+
+  if (elements.mobileTabSurah && elements.mobileTabJuz && elements.mobileTabBookmarks) {
+    elements.mobileTabSurah.classList.toggle('active', state.mobileNavTab === 'surah');
+    elements.mobileTabJuz.classList.toggle('active', state.mobileNavTab === 'juz');
+    elements.mobileTabBookmarks.classList.toggle('active', state.mobileNavTab === 'bookmarks');
+  }
+
+  if (elements.mobileSurahList && elements.mobileJuzList && elements.mobileBookmarkList) {
+    elements.mobileSurahList.classList.toggle('active', state.mobileNavTab === 'surah');
+    elements.mobileJuzList.classList.toggle('active', state.mobileNavTab === 'juz');
+    elements.mobileBookmarkList.classList.toggle('active', state.mobileNavTab === 'bookmarks');
+  }
+
+  if (elements.mobileSurahList) {
+    elements.mobileSurahList.innerHTML = state.chapters
+      .map((surah) => {
+        const isActive = state.currentSelection === surah.id && state.currentMode === 'surah';
+        const isSurahPlaying = Boolean(
+          state.playbackState.isPlaying &&
+          state.playbackScope === 'surah' &&
+          state.activeSurahNumber === surah.id
+        );
+        const playIcon = renderIcon(isSurahPlaying ? 'stop' : 'play');
+        const playLabel = isSurahPlaying ? 'Stop' : 'Play';
+        return `
+          <div class="list-item ${isActive ? 'active' : ''}" data-action="mobile-select-selection" data-mode="surah" data-number="${surah.id}">
+            <div class="list-meta">
+              <div class="list-title">${surah.id}. ${surah.name_simple}</div>
+              <div class="list-sub">${surah.name_arabic} - ${surah.verses_count} ayahs</div>
+            </div>
+            <button class="player-icon-button list-play-button" data-action="mobile-play-selection" data-mode="surah" data-number="${surah.id}" aria-label="${playLabel} surah">
+              ${playIcon}
+              <span class="tooltip">${playLabel}</span>
+            </button>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  if (elements.mobileJuzList) {
+    elements.mobileJuzList.innerHTML = Array.from({ length: 30 }, (_, index) => {
+      const juzNumber = index + 1;
+      const isActive = state.currentSelection === juzNumber && state.currentMode === 'juz';
+      return `
+        <div class="list-item ${isActive ? 'active' : ''}" data-action="mobile-select-selection" data-mode="juz" data-number="${juzNumber}">
+          <div class="list-meta">
+            <div class="list-title">Juz ${juzNumber}</div>
+            <div class="list-sub">Para ${juzNumber}</div>
+          </div>
+          <button class="player-icon-button list-play-button" data-action="mobile-play-selection" data-mode="juz" data-number="${juzNumber}" aria-label="Play juz">
+            ${renderIcon('play')}
+            <span class="tooltip">Play</span>
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  if (elements.mobileBookmarkList) {
+    const sorted = sortBookmarks(state.bookmarks);
+    if (!sorted.length) {
+      elements.mobileBookmarkList.innerHTML = '<p class="empty">No bookmarks yet.</p>';
+    } else {
+      elements.mobileBookmarkList.innerHTML = sorted
+        .map((bookmark) => {
+          const label = bookmark.mode === 'surah'
+            ? `Surah ${bookmark.surahNumber} - Ayah ${bookmark.ayahNumber}`
+            : `Juz ${bookmark.juzNumber ?? ''} - ${bookmark.surahNumber}:${bookmark.ayahNumber}`;
+          return `
+            <div class="bookmark-row">
+              <button class="bookmark-item" data-action="mobile-bookmark-select" data-mode="${bookmark.mode}" data-surah="${bookmark.surahNumber}" data-ayah="${bookmark.ayahNumber}" data-juz="${bookmark.juzNumber ?? ''}">
+                <span>${label}</span>
+                <span class="bookmark-time">${formatTimestamp(bookmark.timestamp)}</span>
+              </button>
+              <button class="player-icon-button list-play-button" data-action="mobile-bookmark-play" data-mode="${bookmark.mode}" data-surah="${bookmark.surahNumber}" data-ayah="${bookmark.ayahNumber}" data-juz="${bookmark.juzNumber ?? ''}" aria-label="Play from here">
+                ${renderIcon('play')}
+                <span class="tooltip">Play from here</span>
+              </button>
+            </div>
+          `;
+        })
+        .join('');
+    }
+  }
+}
+
 export function renderVerses(state: AppState) {
   if (!state.verses.length) {
     renderSelectionHeader(state);
@@ -387,6 +479,15 @@ export function renderSettingsPanel(state: AppState) {
           <span>${state.settings.urduFontPx}px</span>
           <button data-action="urdu-inc">+</button>
         </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h4>Quran Script</h4>
+      <div class="pill-group" role="radiogroup" aria-label="Quran script">
+        ${renderScriptPill('uthmani', 'Uthmani', state.settings.quranScript)}
+        ${renderScriptPill('indopak', 'IndoPak', state.settings.quranScript)}
+        ${renderScriptPill('tajweed', 'Tajweed', state.settings.quranScript)}
       </div>
     </div>
 
@@ -536,7 +637,10 @@ function renderVerseRow(verse: VerseData, index: number, state: AppState, curren
     juzNumber: state.currentMode === 'juz' ? state.currentSelection ?? undefined : undefined
   });
 
-  const arabic = wrapWords(verse.arabicText);
+  const script = state.settings.quranScript;
+  const arabicText = getArabicText(verse, script);
+  const isTajweed = script === 'tajweed' && Boolean(verse.arabicTajweed);
+  const arabic = isTajweed ? wrapWordsFromHtml(arabicText) : wrapWords(arabicText);
   const urdu = wrapWords(verse.urduText);
   const ayahId = `ayah-${pad3(verse.surah)}${pad3(verse.ayah)}`;
 
@@ -648,6 +752,21 @@ function renderIcon(kind: 'play' | 'stop') {
       <path d="M8 5.5v13l11-6.5-11-6.5z"></path>
     </svg>
   `;
+}
+
+function renderScriptPill(value: Settings['quranScript'], label: string, current: Settings['quranScript']) {
+  const isActive = value === current ? 'active' : '';
+  return `
+    <button class="pill ${isActive}" data-action="script-select" data-script="${value}" role="radio" aria-checked="${value === current}">
+      ${label}
+    </button>
+  `;
+}
+
+function getArabicText(verse: VerseData, script: Settings['quranScript']) {
+  if (script === 'indopak' && verse.arabicIndoPak) return verse.arabicIndoPak;
+  if (script === 'tajweed' && verse.arabicTajweed) return verse.arabicTajweed;
+  return verse.arabicUthmani || verse.arabicText;
 }
 
 function iconBookmark() {
@@ -790,6 +909,39 @@ function wrapWords(text: string) {
     })
     .join('');
   return { html, count: index };
+}
+
+function wrapWordsFromHtml(htmlText: string) {
+  const container = document.createElement('div');
+  container.innerHTML = htmlText;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node.nodeValue) textNodes.push(node as Text);
+  }
+  let index = 0;
+  textNodes.forEach((node) => {
+    const value = node.nodeValue ?? '';
+    if (!value.trim()) return;
+    const parts = value.split(/(\s+)/);
+    const fragment = document.createDocumentFragment();
+    parts.forEach((part) => {
+      if (!part) return;
+      if (!part.trim()) {
+        fragment.appendChild(document.createTextNode(part));
+        return;
+      }
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.dataset.wordIndex = String(index);
+      span.textContent = part;
+      fragment.appendChild(span);
+      index += 1;
+    });
+    node.parentNode?.replaceChild(fragment, node);
+  });
+  return { html: container.innerHTML, count: index };
 }
 
 function escapeHtml(value: string) {

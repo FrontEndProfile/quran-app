@@ -18,6 +18,7 @@ import {
   renderNotice,
   renderSettingsPanel,
   renderSidebar,
+  renderMobileNav,
   renderSelectionHeaderOnly,
   renderVerses,
   showToast,
@@ -47,6 +48,8 @@ const store = createStore({
   playerVisible: true,
   settingsOpen: false,
   speedMenuOpen: false,
+  mobileNavOpen: false,
+  mobileNavTab: 'surah',
   loading: true,
   error: ''
 });
@@ -69,7 +72,8 @@ async function loadSelection(
   number: number,
   startAt?: { surah: number; ayah: number },
   autoplay = false,
-  scopeOverride?: 'surah' | 'ayah'
+  scopeOverride?: 'surah' | 'ayah',
+  scrollToTop = false
 ) {
   if (autoplay) {
     renderPlayerBar(store.getState());
@@ -98,12 +102,18 @@ async function loadSelection(
       const [surahStr, ayahStr] = verse.verse_key.split(':');
       const surah = Number(surahStr);
       const ayah = Number(ayahStr);
+      const arabicUthmani = verse.text_uthmani;
+      const arabicIndoPak = verse.text_indopak;
+      const arabicTajweed = verse.text_uthmani_tajweed;
       return {
         surah,
         ayah,
         verseKey: verse.verse_key,
         key: ayahFileKey(surah, ayah),
-        arabicText: verse.text_uthmani,
+        arabicText: arabicUthmani,
+        arabicUthmani,
+        arabicIndoPak,
+        arabicTajweed,
         urduText: stripHtml(verse.translations?.[0]?.text ?? '')
       };
     });
@@ -150,8 +160,12 @@ async function loadSelection(
     renderPlayerBar(store.getState());
   } finally {
     renderSidebar(store.getState());
+    renderMobileNav(store.getState());
     renderVerses(store.getState());
     updateActiveAyahUI(store.getState());
+    if (scrollToTop) {
+      scrollReaderToTop();
+    }
   }
 }
 
@@ -165,6 +179,8 @@ function updateSettings(partial: Partial<Settings>) {
   player.setPlaybackRate(updated.playbackSpeed);
   renderPlayerBar(store.getState());
   renderSettingsPanel(store.getState());
+  renderVerses(store.getState());
+  updateActiveAyahUI(store.getState());
 }
 
 function handleClick(event: Event) {
@@ -219,6 +235,48 @@ function handleClick(event: Event) {
       return;
     }
     loadSelection(mode, number, undefined, true, mode === 'surah' ? 'surah' : 'ayah');
+    return;
+  }
+
+  if (action === 'open-nav') {
+    store.update((state) => ({ ...state, mobileNavOpen: true }));
+    renderMobileNav(store.getState());
+    return;
+  }
+
+  if (action === 'close-nav') {
+    store.update((state) => ({ ...state, mobileNavOpen: false }));
+    renderMobileNav(store.getState());
+    return;
+  }
+
+  if (action === 'mobile-tab') {
+    const tab = actionEl?.dataset.tab as 'surah' | 'juz' | 'bookmarks' | undefined;
+    if (!tab) return;
+    store.update((state) => ({ ...state, mobileNavTab: tab }));
+    renderMobileNav(store.getState());
+    return;
+  }
+
+  if (action === 'mobile-select-selection') {
+    const mode = (actionEl?.dataset.mode as TabMode) ?? 'surah';
+    const number = Number(actionEl?.dataset.number);
+    if (!Number.isFinite(number)) return;
+    store.update((state) => ({ ...state, mobileNavOpen: false }));
+    renderMobileNav(store.getState());
+    player.stop();
+    renderPlayerBar(store.getState());
+    loadSelection(mode, number, undefined, false, undefined, true);
+    return;
+  }
+
+  if (action === 'mobile-play-selection') {
+    const mode = (actionEl?.dataset.mode as TabMode) ?? 'surah';
+    const number = Number(actionEl?.dataset.number);
+    if (!Number.isFinite(number)) return;
+    store.update((state) => ({ ...state, mobileNavOpen: false }));
+    renderMobileNav(store.getState());
+    loadSelection(mode, number, undefined, true, mode === 'surah' ? 'surah' : 'ayah', true);
     return;
   }
 
@@ -381,6 +439,7 @@ function handleClick(event: Event) {
     saveBookmarks(next);
     store.update((state) => ({ ...state, bookmarks: next }));
     renderSidebar(store.getState());
+    renderMobileNav(store.getState());
     renderVerses(store.getState());
     updateActiveAyahUI(store.getState());
     return;
@@ -397,6 +456,34 @@ function handleClick(event: Event) {
     if (!Number.isFinite(selectionNumber)) return;
 
     loadSelection(mode, selectionNumber, { surah, ayah }, true, 'ayah');
+    return;
+  }
+
+  if (action === 'mobile-bookmark-select') {
+    const mode = (actionEl?.dataset.mode as TabMode) ?? 'surah';
+    const surah = Number(actionEl?.dataset.surah);
+    const ayah = Number(actionEl?.dataset.ayah);
+    const juz = Number(actionEl?.dataset.juz);
+    if (!Number.isFinite(surah) || !Number.isFinite(ayah)) return;
+    const selectionNumber = mode === 'surah' ? surah : juz;
+    if (!Number.isFinite(selectionNumber)) return;
+    store.update((state) => ({ ...state, mobileNavOpen: false }));
+    renderMobileNav(store.getState());
+    loadSelection(mode, selectionNumber, { surah, ayah }, false, 'ayah', true);
+    return;
+  }
+
+  if (action === 'mobile-bookmark-play') {
+    const mode = (actionEl?.dataset.mode as TabMode) ?? 'surah';
+    const surah = Number(actionEl?.dataset.surah);
+    const ayah = Number(actionEl?.dataset.ayah);
+    const juz = Number(actionEl?.dataset.juz);
+    if (!Number.isFinite(surah) || !Number.isFinite(ayah)) return;
+    const selectionNumber = mode === 'surah' ? surah : juz;
+    if (!Number.isFinite(selectionNumber)) return;
+    store.update((state) => ({ ...state, mobileNavOpen: false }));
+    renderMobileNav(store.getState());
+    loadSelection(mode, selectionNumber, { surah, ayah }, true, 'ayah', true);
     return;
   }
 
@@ -446,9 +533,25 @@ function handleClick(event: Event) {
     return;
   }
 
+  if (action === 'script-select') {
+    const script = actionEl?.dataset.script as Settings['quranScript'] | undefined;
+    if (!script) return;
+    updateSettings({ quranScript: script });
+    return;
+  }
+
   if (store.getState().speedMenuOpen && !target.closest('.speed-control')) {
     store.update((state) => ({ ...state, speedMenuOpen: false }));
     renderPlayerBar(store.getState());
+  }
+}
+
+function scrollReaderToTop() {
+  const container = document.getElementById('versesContainer');
+  if (container && container.scrollHeight > container.clientHeight + 1) {
+    container.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
@@ -505,6 +608,7 @@ async function init() {
     renderSidebar(store.getState());
     renderPlayerBar(store.getState());
     renderSettingsPanel(store.getState());
+    renderMobileNav(store.getState());
     renderVerses(store.getState());
     renderNotice(store.getState());
   }
@@ -523,6 +627,7 @@ player.subscribe((playbackState) => {
     }));
   }
   renderPlayerBar(store.getState());
+  renderMobileNav(store.getState());
   updateActiveAyahUI(store.getState());
   renderSelectionHeaderOnly(store.getState());
 });

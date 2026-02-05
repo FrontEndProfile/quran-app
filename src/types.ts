@@ -24,6 +24,8 @@ export interface VerseApi {
   verse_number: number;
   chapter_id: number;
   text_uthmani: string;
+  text_indopak?: string;
+  text_uthmani_tajweed?: string;
   translations?: { text: string }[];
 }
 
@@ -33,6 +35,9 @@ export interface VerseData {
   verseKey: string;
   key: string;
   arabicText: string;
+  arabicUthmani: string;
+  arabicIndoPak?: string;
+  arabicTajweed?: string;
   urduText: string;
 }
 
@@ -44,6 +49,7 @@ export interface Settings {
   repeat: boolean;
   urduVoiceEnabled: boolean;
   playbackSpeed: number;
+  quranScript: 'uthmani' | 'indopak' | 'tajweed';
 }
 
 export type PlaybackScope = 'surah' | 'ayah' | null;

@@ -13,6 +13,22 @@
   </head>
   <body>
     <div id="app">
+      <header class="mobile-appbar">
+        <div class="mobile-title">Quran Reader</div>
+        <div class="mobile-actions">
+          <button class="icon-button" data-action="open-nav" aria-label="Open navigation">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"></path>
+            </svg>
+          </button>
+          <button class="icon-button" data-action="toggle-settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19.4 13.5a7.9 7.9 0 0 0 .1-1.5 7.9 7.9 0 0 0-.1-1.5l2.1-1.6-2-3.4-2.5 1a7.7 7.7 0 0 0-2.6-1.5l-.4-2.6H9l-.4 2.6a7.7 7.7 0 0 0-2.6 1.5l-2.5-1-2 3.4 2.1 1.6a7.9 7.9 0 0 0-.1 1.5 7.9 7.9 0 0 0 .1 1.5l-2.1 1.6 2 3.4 2.5-1a7.7 7.7 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.6-1.5l2.5 1 2-3.4-2.1-1.6zM12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4z"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
       <header class="app-header">
         <div>
           <h1>Quran Reader</h1>
@@ -57,6 +73,26 @@
           </button>
         </div>
         <div class="settings-content" id="settingsContent"></div>
+      </aside>
+
+      <div class="mobile-nav-overlay hidden" id="mobileNavOverlay" data-action="close-nav"></div>
+      <aside class="mobile-nav hidden" id="mobileNav">
+        <div class="mobile-nav-header">
+          <h3>Navigate</h3>
+          <button class="icon-button" data-action="close-nav" aria-label="Close navigation">
+            ✕
+          </button>
+        </div>
+        <div class="mobile-tabs">
+          <button class="tab-button" id="mobileTabSurah" data-action="mobile-tab" data-tab="surah">Surah</button>
+          <button class="tab-button" id="mobileTabJuz" data-action="mobile-tab" data-tab="juz">Juz</button>
+          <button class="tab-button" id="mobileTabBookmarks" data-action="mobile-tab" data-tab="bookmarks">Bookmarks</button>
+        </div>
+        <div class="mobile-tab-panels">
+          <div class="mobile-tab-panel" id="mobileSurahList"></div>
+          <div class="mobile-tab-panel" id="mobileJuzList"></div>
+          <div class="mobile-tab-panel" id="mobileBookmarkList"></div>
+        </div>
       </aside>
     </div>
 

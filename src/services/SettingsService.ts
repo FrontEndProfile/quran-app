@@ -8,7 +8,8 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'warm',
   repeat: false,
   urduVoiceEnabled: true,
-  playbackSpeed: 1
+  playbackSpeed: 1,
+  quranScript: 'uthmani'
 };
 
 export class SettingsService {

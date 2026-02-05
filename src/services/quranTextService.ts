@@ -54,7 +54,7 @@ export class QuranTextService {
     while (true) {
       const url = new URL(`${QURAN_TEXT_API_BASE}/${path}`);
       url.searchParams.set('translations', String(translationId));
-      url.searchParams.set('fields', 'text_uthmani,verse_key,verse_number,chapter_id');
+      url.searchParams.set('fields', 'text_uthmani,text_indopak,text_uthmani_tajweed,verse_key,verse_number,chapter_id');
       url.searchParams.set('per_page', String(perPage));
       url.searchParams.set('page', String(page));
 
