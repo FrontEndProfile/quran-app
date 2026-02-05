@@ -12,6 +12,7 @@ export const elements = {
   settingsDrawer: document.getElementById('settingsDrawer') as HTMLDivElement,
   settingsOverlay: document.getElementById('settingsOverlay') as HTMLDivElement,
   settingsContent: document.getElementById('settingsContent') as HTMLDivElement,
+  readerOverlay: document.getElementById('readerOverlay') as HTMLDivElement,
   mobileNav: document.getElementById('mobileNav') as HTMLDivElement,
   mobileNavOverlay: document.getElementById('mobileNavOverlay') as HTMLDivElement,
   mobileTabSurah: document.getElementById('mobileTabSurah') as HTMLButtonElement,

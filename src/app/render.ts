@@ -215,14 +215,18 @@ function iconGear() {
   `;
 }
 
+export function renderReaderOverlay(state: AppState) {
+  if (!elements.readerOverlay) return;
+  elements.readerOverlay.classList.toggle('hidden', !state.readerOverlayVisible);
+  elements.versesContainer.classList.toggle('reader-disabled', state.readerOverlayVisible);
+  elements.selectionHeader.classList.toggle('reader-disabled', state.readerOverlayVisible);
+}
+
 export function renderSidebar(state: AppState) {
   elements.modeSurah.classList.toggle('active', state.currentMode === 'surah');
   elements.modeJuz.classList.toggle('active', state.currentMode === 'juz');
 
-  if (state.loading) {
-    elements.listHeader.textContent = 'Loading...';
-    elements.listContainer.innerHTML = '';
-  } else if (state.error) {
+  if (state.error) {
     elements.listHeader.textContent = 'Error';
     elements.listContainer.innerHTML = `<p class="empty">${state.error}</p>`;
   } else if (state.currentMode === 'surah') {
@@ -390,6 +394,17 @@ export function renderMobileNav(state: AppState) {
 }
 
 export function renderVerses(state: AppState) {
+  if (state.loading) {
+    renderReaderSkeleton();
+    lastActiveIndex = -1;
+    lastPhase = null;
+    lastStatus = null;
+    lastArabicWordIndex = -1;
+    lastUrduWordIndex = -1;
+    lastWordVerseIndex = -1;
+    return;
+  }
+
   if (!state.verses.length) {
     renderSelectionHeader(state);
     elements.versesContainer.innerHTML = '<p class="empty">Select a Surah or Juz to begin.</p>';
@@ -425,6 +440,28 @@ export function renderVerses(state: AppState) {
   lastArabicWordIndex = -1;
   lastUrduWordIndex = -1;
   lastWordVerseIndex = -1;
+}
+
+function renderReaderSkeleton() {
+  elements.selectionHeader.innerHTML = `
+    <div class="selection-card skeleton-card">
+      <div class="skeleton-line skeleton-title"></div>
+      <div class="skeleton-line skeleton-subtitle"></div>
+    </div>
+  `;
+
+  const skeletonCards = Array.from({ length: 6 }, () => {
+    return `
+      <div class="verse skeleton-verse">
+        <div class="skeleton-line skeleton-action"></div>
+        <div class="skeleton-line skeleton-meta"></div>
+        <div class="skeleton-line skeleton-arabic"></div>
+        <div class="skeleton-line skeleton-urdu"></div>
+      </div>
+    `;
+  }).join('');
+
+  elements.versesContainer.innerHTML = skeletonCards;
 }
 
 export function renderSelectionHeaderOnly(state: AppState) {

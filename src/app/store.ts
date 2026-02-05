@@ -19,6 +19,7 @@ export interface AppState {
   speedMenuOpen: boolean;
   mobileNavOpen: boolean;
   mobileNavTab: 'surah' | 'juz' | 'bookmarks';
+  readerOverlayVisible: boolean;
   loading: boolean;
   error: string;
 }

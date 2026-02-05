@@ -104,6 +104,7 @@ body.player-visible {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 85vh;
 }
 
 .panel {
@@ -112,6 +113,19 @@ body.player-visible {
   padding: 14px;
   box-shadow: var(--shadow);
   border: 1px solid rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.nav-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.bookmarks-panel {
+  flex: 0 0 28%;
+  min-height: 180px;
 }
 
 .mode-toggle {
@@ -121,6 +135,7 @@ body.player-visible {
   padding: 6px;
   border-radius: 999px;
   margin-bottom: 14px;
+  width: max-content;
 }
 
 .mode-button {
@@ -147,7 +162,8 @@ body.player-visible {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 65vh;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
   padding-top: 1px;
@@ -204,6 +220,8 @@ body.player-visible {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 80vh;
+  position: relative;
 }
 
 .notice {
@@ -253,6 +271,7 @@ body.player-visible {
 
 .selection-header {
   margin: 6px 0 4px;
+  min-height: 86px;
 }
 
 .selection-card {
@@ -304,6 +323,57 @@ body.player-visible {
   flex-direction: column;
   gap: 12px;
   padding-bottom: var(--player-bar-height);
+  min-height: 60vh;
+}
+
+.reader-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 250, 242, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 10;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  text-align: center;
+  padding: 16px;
+  padding-top: 8rem;
+}
+
+.reader-overlay.hidden {
+  display: none;
+}
+
+.reader-disabled {
+  pointer-events: none;
+  user-select: none;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(192, 107, 52, 0.25);
+  border-top-color: rgba(192, 107, 52, 0.8);
+  animation: spin 0.9s linear infinite;
+}
+
+.overlay-title {
+  font-weight: 600;
+}
+
+.overlay-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .verse {
@@ -312,6 +382,64 @@ body.player-visible {
   border: 1px solid var(--border);
   background: var(--surface-strong);
   transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.skeleton-card,
+.skeleton-verse {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line {
+  height: 12px;
+  background: linear-gradient(90deg, rgba(227, 216, 199, 0.25), rgba(227, 216, 199, 0.7), rgba(227, 216, 199, 0.25));
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton-title {
+  width: 60%;
+  height: 16px;
+  margin-bottom: 10px;
+}
+
+.skeleton-subtitle {
+  width: 35%;
+}
+
+.skeleton-verse {
+  display: grid;
+  gap: 10px;
+}
+
+.skeleton-action {
+  width: 90px;
+}
+
+.skeleton-meta {
+  width: 120px;
+}
+
+.skeleton-arabic {
+  height: 24px;
+  width: 80%;
+}
+
+.skeleton-urdu {
+  height: 16px;
+  width: 65%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
 .surah-separator {

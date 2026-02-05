@@ -38,7 +38,7 @@
 
       <main class="layout">
         <aside class="sidebar">
-          <div class="panel">
+          <div class="panel nav-panel">
             <div class="mode-toggle">
               <button class="mode-button" data-action="switch-mode" data-mode="surah" id="modeSurah">Surah</button>
               <button class="mode-button" data-action="switch-mode" data-mode="juz" id="modeJuz">Juz</button>
@@ -48,17 +48,22 @@
             <div class="list" id="listContainer"></div>
           </div>
 
-          <div class="panel">
+          <div class="panel bookmarks-panel">
             <div class="list-header">Bookmarks</div>
             <div class="bookmark-list" id="bookmarkList"></div>
           </div>
         </aside>
 
         <section class="reader">
+          <div class="reader-overlay hidden" id="readerOverlay">
+            <div class="spinner"></div>
+            <div class="overlay-title">Loading…</div>
+            <div class="overlay-sub">Fetching ayahs/audio…</div>
+          </div>
           <div class="notice" id="notice"></div>
           <div class="toast-host" id="toastHost"></div>
-          <div class="selection-header" id="selectionHeader"></div>
           <div class="verses" id="versesContainer"></div>
+          <div class="selection-header" id="selectionHeader"></div>
         </section>
       </main>
 

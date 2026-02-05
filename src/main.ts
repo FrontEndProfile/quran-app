@@ -19,6 +19,7 @@ import {
   renderSettingsPanel,
   renderSidebar,
   renderMobileNav,
+  renderReaderOverlay,
   renderSelectionHeaderOnly,
   renderVerses,
   showToast,
@@ -50,9 +51,12 @@ const store = createStore({
   speedMenuOpen: false,
   mobileNavOpen: false,
   mobileNavTab: 'surah',
+  readerOverlayVisible: false,
   loading: true,
   error: ''
 });
+
+let overlayTimer: number | null = null;
 
 function applyFontSizes(arabic: number, urdu: number) {
   document.documentElement.style.setProperty('--arabic-size', `${arabic}px`);
@@ -87,6 +91,11 @@ async function loadSelection(
   }
 
   store.update((state) => ({ ...state, loading: true, error: '' }));
+  if (overlayTimer) window.clearTimeout(overlayTimer);
+  overlayTimer = window.setTimeout(() => {
+    store.update((state) => ({ ...state, readerOverlayVisible: true }));
+    renderReaderOverlay(store.getState());
+  }, 300);
   renderNotice(store.getState());
   renderSidebar(store.getState());
 
@@ -159,6 +168,12 @@ async function loadSelection(
     renderNotice(store.getState());
     renderPlayerBar(store.getState());
   } finally {
+    if (overlayTimer) {
+      window.clearTimeout(overlayTimer);
+      overlayTimer = null;
+    }
+    store.update((state) => ({ ...state, readerOverlayVisible: false }));
+    renderReaderOverlay(store.getState());
     renderSidebar(store.getState());
     renderMobileNav(store.getState());
     renderVerses(store.getState());
@@ -609,6 +624,7 @@ async function init() {
     renderPlayerBar(store.getState());
     renderSettingsPanel(store.getState());
     renderMobileNav(store.getState());
+    renderReaderOverlay(store.getState());
     renderVerses(store.getState());
     renderNotice(store.getState());
   }
@@ -628,6 +644,7 @@ player.subscribe((playbackState) => {
   }
   renderPlayerBar(store.getState());
   renderMobileNav(store.getState());
+  renderReaderOverlay(store.getState());
   updateActiveAyahUI(store.getState());
   renderSelectionHeaderOnly(store.getState());
 });
