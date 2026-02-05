@@ -382,8 +382,8 @@ body.player-visible {
 }
 
 .word-active {
-  background: rgba(192, 107, 52, 0.18);
-  box-shadow: inset 0 -2px 0 rgba(192, 107, 52, 0.45);
+  /* background: rgba(192, 107, 52, 0.18); */
+  /* box-shadow: inset 0 -2px 0 rgba(192, 107, 52, 0.45); */
 }
 
 .bookmark-list {
