@@ -6,7 +6,9 @@ const DEFAULT_SETTINGS: Settings = {
   urduFontPx: DEFAULT_URDU_FONT_PX,
   reciterId: DEFAULT_RECITER_ID,
   theme: 'warm',
-  repeat: false
+  repeat: false,
+  urduVoiceEnabled: true,
+  playbackSpeed: 1
 };
 
 export class SettingsService {

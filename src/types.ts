@@ -42,7 +42,11 @@ export interface Settings {
   reciterId: string;
   theme: 'warm' | 'dark';
   repeat: boolean;
+  urduVoiceEnabled: boolean;
+  playbackSpeed: number;
 }
+
+export type PlaybackScope = 'surah' | 'ayah' | null;
 
 export interface PlaybackState {
   isPlaying: boolean;

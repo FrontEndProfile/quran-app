@@ -12,11 +12,13 @@ import {
 import type { Chapter, Settings, TabMode, VerseApi, VerseData } from './types';
 import { createStore } from './app/store';
 import {
+  clearActiveAyahUI,
   markUserScroll,
   renderPlayerBar,
   renderNotice,
   renderSettingsPanel,
   renderSidebar,
+  renderSelectionHeaderOnly,
   renderVerses,
   showToast,
   updateActiveAyahUI,
@@ -38,8 +40,13 @@ const store = createStore({
   chapters: [] as Chapter[],
   translatorName: URDU_TRANSLATOR_NAME,
   translationId: null,
-  playerVisible: false,
+  playbackScope: null,
+  activeMode: null,
+  activeSurahNumber: null,
+  activeAyahKey: null,
+  playerVisible: true,
   settingsOpen: false,
+  speedMenuOpen: false,
   loading: true,
   error: ''
 });
@@ -61,10 +68,10 @@ async function loadSelection(
   mode: TabMode,
   number: number,
   startAt?: { surah: number; ayah: number },
-  autoplay = false
+  autoplay = false,
+  scopeOverride?: 'surah' | 'ayah'
 ) {
   if (autoplay) {
-    store.update((state) => ({ ...state, playerVisible: true }));
     renderPlayerBar(store.getState());
   }
 
@@ -121,6 +128,15 @@ async function loadSelection(
     player.setSources(getReciterBase(store.getState().settings.reciterId), URDU_AUDIO_BASE_URL);
 
     if (autoplay && verses.length) {
+      const startVerse = verses[startIndex];
+      const scope = scopeOverride ?? (mode === 'surah' ? 'surah' : 'ayah');
+      store.update((state) => ({
+        ...state,
+        playbackScope: scope,
+        activeMode: mode,
+        activeSurahNumber: startVerse?.surah ?? null,
+        activeAyahKey: startVerse?.key ?? null
+      }));
       player.playFromIndex(startIndex);
     }
   } catch (error) {
@@ -128,8 +144,7 @@ async function loadSelection(
     store.update((state) => ({
       ...state,
       loading: false,
-      error: message,
-      playerVisible: autoplay ? false : state.playerVisible
+      error: message
     }));
     renderNotice(store.getState());
     renderPlayerBar(store.getState());
@@ -146,6 +161,8 @@ function updateSettings(partial: Partial<Settings>) {
   applyFontSizes(updated.arabicFontPx, updated.urduFontPx);
   applyTheme(updated.theme);
   player.setRepeat(updated.repeat);
+  player.setUrduVoiceEnabled(updated.urduVoiceEnabled);
+  player.setPlaybackRate(updated.playbackSpeed);
   renderPlayerBar(store.getState());
   renderSettingsPanel(store.getState());
 }
@@ -170,7 +187,6 @@ function handleClick(event: Event) {
     const number = Number(actionEl?.dataset.number);
     if (!Number.isFinite(number)) return;
     player.stop();
-    store.update((state) => ({ ...state, playerVisible: false }));
     renderPlayerBar(store.getState());
     loadSelection(mode, number, undefined, false);
     return;
@@ -180,7 +196,29 @@ function handleClick(event: Event) {
     const mode = (actionEl?.dataset.mode as TabMode) ?? 'surah';
     const number = Number(actionEl?.dataset.number);
     if (!Number.isFinite(number)) return;
-    loadSelection(mode, number, undefined, true);
+    const state = store.getState();
+    const isSameSurahPlaying = Boolean(
+      mode === 'surah' &&
+      state.playbackState.isPlaying &&
+      state.playbackScope === 'surah' &&
+      state.activeSurahNumber === number
+    );
+    if (isSameSurahPlaying) {
+      player.stop();
+      store.update((current) => ({
+        ...current,
+        playbackScope: null,
+        activeMode: null,
+        activeSurahNumber: null,
+        activeAyahKey: null
+      }));
+      clearActiveAyahUI();
+      renderPlayerBar(store.getState());
+      renderVerses(store.getState());
+      renderNotice(store.getState());
+      return;
+    }
+    loadSelection(mode, number, undefined, true, mode === 'surah' ? 'surah' : 'ayah');
     return;
   }
 
@@ -196,7 +234,14 @@ function handleClick(event: Event) {
 
   if (action === 'stop') {
     player.stop();
-    store.update((state) => ({ ...state, playerVisible: false }));
+    store.update((state) => ({
+      ...state,
+      playbackScope: null,
+      activeMode: null,
+      activeSurahNumber: null,
+      activeAyahKey: null
+    }));
+    clearActiveAyahUI();
     renderPlayerBar(store.getState());
     return;
   }
@@ -242,6 +287,26 @@ function handleClick(event: Event) {
     return;
   }
 
+  if (action === 'toggle-urdu-voice') {
+    updateSettings({ urduVoiceEnabled: !store.getState().settings.urduVoiceEnabled });
+    return;
+  }
+
+  if (action === 'toggle-speed-menu') {
+    store.update((state) => ({ ...state, speedMenuOpen: !state.speedMenuOpen }));
+    renderPlayerBar(store.getState());
+    return;
+  }
+
+  if (action === 'set-speed') {
+    const speed = Number(actionEl?.dataset.speed);
+    if (!Number.isFinite(speed)) return;
+    updateSettings({ playbackSpeed: speed });
+    store.update((state) => ({ ...state, speedMenuOpen: false }));
+    renderPlayerBar(store.getState());
+    return;
+  }
+
   if (action === 'arabic-inc') {
     updateSettings({ arabicFontPx: Math.min(store.getState().settings.arabicFontPx + 2, 52) });
     return;
@@ -262,15 +327,40 @@ function handleClick(event: Event) {
     return;
   }
 
-  if (action === 'play-ayah') {
+  if (action === 'toggle-ayah-play') {
     const index = Number(actionEl?.dataset.index);
     if (!Number.isFinite(index)) return;
+    const verse = store.getState().verses[index];
+    if (!verse) return;
+    const isSameAyah = store.getState().activeAyahKey === verse.key && store.getState().playbackState.isPlaying;
+    if (isSameAyah) {
+      player.stop();
+      store.update((state) => ({
+        ...state,
+        playbackScope: null,
+        activeMode: null,
+        activeSurahNumber: null,
+        activeAyahKey: null
+      }));
+      clearActiveAyahUI();
+      renderPlayerBar(store.getState());
+      renderVerses(store.getState());
+      return;
+    }
+
     player.stop();
     player.loadPlaylist(store.getState().verses);
     player.setSources(getReciterBase(store.getState().settings.reciterId), URDU_AUDIO_BASE_URL);
     player.playFromIndex(index);
-    store.update((state) => ({ ...state, playerVisible: true }));
+    store.update((state) => ({
+      ...state,
+      playbackScope: 'ayah',
+      activeMode: state.currentMode,
+      activeSurahNumber: verse.surah,
+      activeAyahKey: verse.key
+    }));
     renderPlayerBar(store.getState());
+    renderVerses(store.getState());
     return;
   }
 
@@ -306,7 +396,35 @@ function handleClick(event: Event) {
     const selectionNumber = mode === 'surah' ? surah : juz;
     if (!Number.isFinite(selectionNumber)) return;
 
-    loadSelection(mode, selectionNumber, { surah, ayah }, true);
+    loadSelection(mode, selectionNumber, { surah, ayah }, true, 'ayah');
+    return;
+  }
+
+  if (action === 'toggle-surah-play') {
+    const state = store.getState();
+    if (state.currentMode !== 'surah' || !state.currentSelection) return;
+    const isSurahPlaying = Boolean(
+      state.playbackState.isPlaying &&
+      state.playbackScope === 'surah' &&
+      state.activeSurahNumber === state.currentSelection
+    );
+    if (isSurahPlaying) {
+      player.stop();
+      store.update((current) => ({
+        ...current,
+        playbackScope: null,
+        activeMode: null,
+        activeSurahNumber: null,
+        activeAyahKey: null
+      }));
+      clearActiveAyahUI();
+      renderPlayerBar(store.getState());
+      renderVerses(store.getState());
+      renderNotice(store.getState());
+      return;
+    }
+
+    loadSelection('surah', state.currentSelection, undefined, true, 'surah');
     return;
   }
 
@@ -326,6 +444,11 @@ function handleClick(event: Event) {
     const nextTheme = store.getState().settings.theme === 'warm' ? 'dark' : 'warm';
     updateSettings({ theme: nextTheme });
     return;
+  }
+
+  if (store.getState().speedMenuOpen && !target.closest('.speed-control')) {
+    store.update((state) => ({ ...state, speedMenuOpen: false }));
+    renderPlayerBar(store.getState());
   }
 }
 
@@ -347,6 +470,8 @@ async function init() {
   applyFontSizes(store.getState().settings.arabicFontPx, store.getState().settings.urduFontPx);
   applyTheme(store.getState().settings.theme);
   player.setRepeat(store.getState().settings.repeat);
+  player.setUrduVoiceEnabled(store.getState().settings.urduVoiceEnabled);
+  player.setPlaybackRate(store.getState().settings.playbackSpeed);
   const currentReciter = store.getState().settings.reciterId;
   if (!ARABIC_RECITERS.some((reciter) => reciter.id === currentReciter)) {
     updateSettings({ reciterId: DEFAULT_RECITER_ID });
@@ -387,8 +512,19 @@ async function init() {
 
 player.subscribe((playbackState) => {
   store.update((state) => ({ ...state, playbackState }));
+  const queue = player.getQueue();
+  const verse = queue[playbackState.currentIndex];
+  if (verse && (playbackState.status === 'playing' || playbackState.status === 'paused')) {
+    store.update((state) => ({
+      ...state,
+      activeAyahKey: verse.key,
+      activeSurahNumber: verse.surah,
+      activeMode: state.activeMode ?? state.currentMode
+    }));
+  }
   renderPlayerBar(store.getState());
   updateActiveAyahUI(store.getState());
+  renderSelectionHeaderOnly(store.getState());
 });
 
 player.onNotice((message) => {

@@ -1,4 +1,4 @@
-import type { Bookmark, Chapter, PlaybackState, Settings, TabMode, VerseData } from '../types';
+import type { Bookmark, Chapter, PlaybackScope, PlaybackState, Settings, TabMode, VerseData } from '../types';
 
 export interface AppState {
   currentMode: TabMode;
@@ -10,8 +10,13 @@ export interface AppState {
   chapters: Chapter[];
   translatorName: string;
   translationId: number | null;
+  playbackScope: PlaybackScope;
+  activeMode: TabMode | null;
+  activeSurahNumber: number | null;
+  activeAyahKey: string | null;
   playerVisible: boolean;
   settingsOpen: boolean;
+  speedMenuOpen: boolean;
   loading: boolean;
   error: string;
 }

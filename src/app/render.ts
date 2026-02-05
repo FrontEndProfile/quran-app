@@ -21,43 +21,197 @@ export function markUserScroll() {
 
 export function renderPlayerBar(state: AppState) {
   const isPlaying = state.playbackState.status === 'playing';
-  const playLabel = isPlaying ? 'Pause' : 'Play';
   const playAction = isPlaying ? 'pause' : 'play';
   const repeatActive = state.settings.repeat ? 'active' : '';
-
-  if (!state.playerVisible) {
-    elements.playerBar.classList.add('hidden');
-    document.body.classList.remove('player-visible');
-    elements.playerBar.innerHTML = '';
-    return;
-  }
+  const speedLabel = formatSpeedLabel(state.settings.playbackSpeed);
+  const speedOptions = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
   elements.playerBar.classList.remove('hidden');
   document.body.classList.add('player-visible');
 
-  const info = buildNowPlayingLabel(state);
+  const hasSelection = state.verses.length > 0;
+  const info = hasSelection ? buildNowPlayingLabel(state) : 'Select a Surah/Juz/Ayah to play';
+  const disabledAttr = hasSelection ? '' : 'disabled';
 
   elements.playerBar.innerHTML = `
-    <div class="player-info">
-      <span class="player-title">Now Playing</span>
-      <span class="player-sub">${info}</span>
+    <div class="player-zone player-zone-left">
+      <div class="player-info">
+        <span class="player-title">Now Playing</span>
+        <span class="player-sub">${info}</span>
+      </div>
     </div>
 
-    <div class="player-controls">
-      <button class="player-button" data-action="${playAction}">${playLabel}</button>
-      <button class="player-button" data-action="prev-ayah">Prev Ayah</button>
-      <button class="player-button" data-action="next-ayah">Next Ayah</button>
-      <button class="player-button" data-action="prev-surah">Prev Surah</button>
-      <button class="player-button" data-action="next-surah">Next Surah</button>
-      <button class="player-button ${repeatActive}" data-action="toggle-repeat">Repeat</button>
-      <button class="player-button danger" data-action="stop">Stop</button>
+    <div class="player-zone player-zone-center">
+      <div class="player-controls" role="group" aria-label="Playback controls">
+        ${renderPlayerIconButton('prev-surah', disabledAttr)}
+        ${renderPlayerIconButton('prev-ayah', disabledAttr)}
+        ${renderPlayerIconButton(playAction, disabledAttr, isPlaying)}
+        ${renderPlayerIconButton('next-ayah', disabledAttr)}
+        ${renderPlayerIconButton('next-surah', disabledAttr)}
+        ${renderPlayerIconButton('toggle-repeat', disabledAttr, false, repeatActive)}
+        ${renderPlayerIconButton('stop', disabledAttr, false, 'danger')}
+      </div>
     </div>
 
-    <div class="player-actions">
-      <button class="icon-button" data-action="toggle-settings" aria-label="Settings">
-        ⚙
+    <div class="player-zone player-zone-right">
+      <div class="speed-control">
+        <button class="player-utility speed-button" data-action="toggle-speed-menu" aria-label="Playback speed">
+          ${speedLabel}
+        </button>
+        <div class="speed-popover ${state.speedMenuOpen ? 'open' : ''}">
+          ${speedOptions
+            .map((speed) => {
+              const isSelected = Number(speed) === Number(state.settings.playbackSpeed);
+              const label = speed === 1 ? '1x (Normal)' : `${speed}x`;
+              return `
+                <button class="speed-option ${isSelected ? 'selected' : ''}" data-action="set-speed" data-speed="${speed}">
+                  <span class="check">${isSelected ? '✓' : ''}</span>
+                  <span>${label}</span>
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+      </div>
+      <button class="player-utility icon-only" data-action="toggle-settings" aria-label="Settings">
+        ${iconGear()}
       </button>
     </div>
+  `;
+}
+
+function renderPlayerIconButton(
+  action: string,
+  disabledAttr: string,
+  isPlaying = false,
+  extraClass = ''
+) {
+  const icon = getActionIcon(action, isPlaying);
+  const label = getActionLabel(action, isPlaying);
+  const pressedAttr = action === 'toggle-repeat' ? `aria-pressed="${extraClass.includes('active')}"` : '';
+  const className = ['player-icon-button', extraClass].filter(Boolean).join(' ');
+  return `
+    <button class="${className}" data-action="${action}" ${disabledAttr} aria-label="${label}" ${pressedAttr}>
+      ${icon}
+      <span class="tooltip">${label}</span>
+    </button>
+  `;
+}
+
+function getActionLabel(action: string, isPlaying: boolean) {
+  switch (action) {
+    case 'pause':
+    case 'play':
+      return isPlaying ? 'Pause' : 'Play';
+    case 'prev-ayah':
+      return 'Prev Ayah';
+    case 'next-ayah':
+      return 'Next Ayah';
+    case 'prev-surah':
+      return 'Prev Surah';
+    case 'next-surah':
+      return 'Next Surah';
+    case 'toggle-repeat':
+      return 'Repeat';
+    case 'stop':
+      return 'Stop';
+    default:
+      return 'Action';
+  }
+}
+
+function getActionIcon(action: string, isPlaying: boolean) {
+  switch (action) {
+    case 'pause':
+    case 'play':
+      return isPlaying ? iconPause() : iconPlay();
+    case 'prev-ayah':
+      return iconSkipPrev();
+    case 'next-ayah':
+      return iconSkipNext();
+    case 'prev-surah':
+      return iconStepPrev();
+    case 'next-surah':
+      return iconStepNext();
+    case 'toggle-repeat':
+      return iconRepeat();
+    case 'stop':
+      return iconStop();
+    default:
+      return iconPlay();
+  }
+}
+
+function iconPlay() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 5.5v13l11-6.5-11-6.5z"></path>
+    </svg>
+  `;
+}
+
+function iconPause() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 5h4v14H7zM13 5h4v14h-4z"></path>
+    </svg>
+  `;
+}
+
+function iconSkipPrev() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 5h2v14H6zM18 6.5v11l-9-5.5 9-5.5z"></path>
+    </svg>
+  `;
+}
+
+function iconSkipNext() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M16 5h2v14h-2zM6 6.5l9 5.5-9 5.5v-11z"></path>
+    </svg>
+  `;
+}
+
+function iconStepPrev() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 6h2v12H7zM18 6l-8 6 8 6V6z"></path>
+    </svg>
+  `;
+}
+
+function iconStepNext() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M15 6h2v12h-2zM6 6v12l8-6-8-6z"></path>
+    </svg>
+  `;
+}
+
+function iconRepeat() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 7h9a4 4 0 0 1 0 8h-1v-2h1a2 2 0 0 0 0-4H7l2.5 2.5L8 13 3 8l5-5 1.5 1.5L7 7z"></path>
+      <path d="M17 17H8a4 4 0 0 1 0-8h1v2H8a2 2 0 0 0 0 4h9l-2.5-2.5L16 11l5 5-5 5-1.5-1.5L17 17z"></path>
+    </svg>
+  `;
+}
+
+function iconStop() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 7h10v10H7z"></path>
+    </svg>
+  `;
+}
+
+function iconGear() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19.4 13.5a7.9 7.9 0 0 0 .1-1.5 7.9 7.9 0 0 0-.1-1.5l2.1-1.6-2-3.4-2.5 1a7.7 7.7 0 0 0-2.6-1.5l-.4-2.6H9l-.4 2.6a7.7 7.7 0 0 0-2.6 1.5l-2.5-1-2 3.4 2.1 1.6a7.9 7.9 0 0 0-.1 1.5 7.9 7.9 0 0 0 .1 1.5l-2.1 1.6 2 3.4 2.5-1a7.7 7.7 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.6-1.5l2.5 1 2-3.4-2.1-1.6zM12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4z"></path>
+    </svg>
   `;
 }
 
@@ -76,13 +230,23 @@ export function renderSidebar(state: AppState) {
     elements.listContainer.innerHTML = state.chapters
       .map((surah) => {
         const isActive = state.currentSelection === surah.id;
+        const isSurahPlaying = Boolean(
+          state.playbackState.isPlaying &&
+          state.playbackScope === 'surah' &&
+          state.activeSurahNumber === surah.id
+        );
+        const playIcon = renderIcon(isSurahPlaying ? 'stop' : 'play');
+        const playLabel = isSurahPlaying ? 'Stop' : 'Play';
         return `
           <div class="list-item ${isActive ? 'active' : ''}" data-action="select-selection" data-mode="surah" data-number="${surah.id}">
             <div class="list-meta">
               <div class="list-title">${surah.id}. ${surah.name_simple}</div>
               <div class="list-sub">${surah.name_arabic} - ${surah.verses_count} ayahs</div>
             </div>
-            <button data-action="play-selection" data-mode="surah" data-number="${surah.id}">Play</button>
+            <button class="player-icon-button list-play-button" data-action="play-selection" data-mode="surah" data-number="${surah.id}" aria-label="${playLabel} surah">
+              ${playIcon}
+              <span class="tooltip">${playLabel}</span>
+            </button>
           </div>
         `;
       })
@@ -92,13 +256,17 @@ export function renderSidebar(state: AppState) {
     elements.listContainer.innerHTML = Array.from({ length: 30 }, (_, index) => {
       const juzNumber = index + 1;
       const isActive = state.currentSelection === juzNumber;
+      const playIcon = renderIcon('play');
       return `
         <div class="list-item ${isActive ? 'active' : ''}" data-action="select-selection" data-mode="juz" data-number="${juzNumber}">
           <div class="list-meta">
             <div class="list-title">Juz ${juzNumber}</div>
             <div class="list-sub">Para ${juzNumber}</div>
           </div>
-          <button data-action="play-selection" data-mode="juz" data-number="${juzNumber}">Play</button>
+          <button class="player-icon-button list-play-button" data-action="play-selection" data-mode="juz" data-number="${juzNumber}" aria-label="Play juz">
+            ${playIcon}
+            <span class="tooltip">Play</span>
+          </button>
         </div>
       `;
     }).join('');
@@ -167,6 +335,10 @@ export function renderVerses(state: AppState) {
   lastWordVerseIndex = -1;
 }
 
+export function renderSelectionHeaderOnly(state: AppState) {
+  renderSelectionHeader(state);
+}
+
 export function renderSettingsPanel(state: AppState) {
   const reciterOptions = ARABIC_RECITERS
     .map((reciter) => {
@@ -189,6 +361,12 @@ export function renderSettingsPanel(state: AppState) {
       <div class="settings-row">
         <label>Voice</label>
         <span>${URDU_VOICE_NAME}</span>
+      </div>
+      <div class="settings-row">
+        <label>Urdu Voice</label>
+        <button class="toggle-switch ${state.settings.urduVoiceEnabled ? 'on' : ''}" data-action="toggle-urdu-voice" aria-pressed="${state.settings.urduVoiceEnabled}">
+          <span class="toggle-dot"></span>
+        </button>
       </div>
     </div>
 
@@ -248,12 +426,14 @@ export function updateActiveAyahUI(state: AppState) {
     if (prev instanceof HTMLElement) {
       prev.classList.remove('active');
       clearWordHighlights(prev);
+      updateAyahToggleAtIndex(state, lastActiveIndex);
     }
 
     const current = elements.versesContainer.querySelector(`[data-verse-index="${currentIndex}"]`);
     if (current instanceof HTMLElement) {
       current.classList.add('active');
       clearWordHighlights(current);
+      updateAyahToggleAtIndex(state, currentIndex);
     }
 
     lastActiveIndex = currentIndex;
@@ -270,11 +450,13 @@ export function updateActiveAyahUI(state: AppState) {
       }
       if (statusChanged && !isPlaying) {
         clearWordHighlights(current);
+        updateAyahToggleAtIndex(state, currentIndex);
       }
       if (statusChanged && isPlaying) {
         clearWordHighlights(current);
         lastArabicWordIndex = -1;
         lastUrduWordIndex = -1;
+        updateAyahToggleAtIndex(state, currentIndex);
       }
     }
   }
@@ -285,6 +467,20 @@ export function updateActiveAyahUI(state: AppState) {
   if (indexChanged && isPlaying) {
     scrollActiveIntoView(currentIndex);
   }
+}
+
+export function clearActiveAyahUI() {
+  const active = elements.versesContainer.querySelector('.verse.active');
+  if (active instanceof HTMLElement) {
+    active.classList.remove('active');
+    clearWordHighlights(active);
+  }
+  lastActiveIndex = -1;
+  lastPhase = null;
+  lastStatus = null;
+  lastArabicWordIndex = -1;
+  lastUrduWordIndex = -1;
+  lastWordVerseIndex = -1;
 }
 
 export function updateWordHighlightByProgress(
@@ -344,14 +540,21 @@ function renderVerseRow(verse: VerseData, index: number, state: AppState, curren
   const urdu = wrapWords(verse.urduText);
   const ayahId = `ayah-${pad3(verse.surah)}${pad3(verse.ayah)}`;
 
+  const isAyahPlaying = Boolean(
+    state.playbackState.isPlaying && state.activeAyahKey === verse.key
+  );
+  const ayahIcon = renderIcon(isAyahPlaying ? 'stop' : 'play');
+
   return `
-    <div class="verse ${active}" id="${ayahId}" data-verse-index="${index}" data-arabic-words="${arabic.count}" data-urdu-words="${urdu.count}">
+    <div class="verse ${active}" id="${ayahId}" data-verse-index="${index}" data-ayah-key="${verse.key}" data-arabic-words="${arabic.count}" data-urdu-words="${urdu.count}">
       <div class="verse-actions">
-        <button class="icon-button" data-action="play-ayah" data-index="${index}" aria-label="Play ayah">
-          <span class="icon-play"></span>
+        <button class="player-icon-button verse-action-button" data-action="toggle-ayah-play" data-index="${index}" aria-label="${isAyahPlaying ? 'Stop ayah' : 'Play ayah'}">
+          ${ayahIcon}
+          <span class="tooltip">${isAyahPlaying ? 'Stop' : 'Play ayah'}</span>
         </button>
-        <button class="bookmark-button ${bookmarked ? 'active' : ''}" data-action="toggle-bookmark" data-index="${index}">
-          ${bookmarked ? 'Bookmarked' : 'Bookmark'}
+        <button class="player-icon-button verse-action-button ${bookmarked ? 'active' : ''}" data-action="toggle-bookmark" data-index="${index}" aria-label="${bookmarked ? 'Remove bookmark' : 'Bookmark'}">
+          ${bookmarked ? iconBookmarkFilled() : iconBookmark()}
+          <span class="tooltip">${bookmarked ? 'Remove bookmark' : 'Bookmark'}</span>
         </button>
       </div>
       <div class="verse-meta">
@@ -374,10 +577,25 @@ function renderSelectionHeader(state: AppState) {
     const chapter = state.chapters.find((item) => item.id === state.currentSelection);
     const title = chapter ? `Surah ${chapter.name_simple}` : `Surah ${state.currentSelection ?? ''}`;
     const subtitle = chapter ? `${chapter.verses_count} ayahs` : `${state.verses.length} ayahs`;
+    const isSurahPlaying = Boolean(
+      state.playbackState.isPlaying &&
+      state.playbackScope === 'surah' &&
+      state.activeSurahNumber === state.currentSelection
+    );
+    const toggleLabel = isSurahPlaying ? 'Stop' : 'Play';
+    const toggleIcon = renderIcon(isSurahPlaying ? 'stop' : 'play');
     elements.selectionHeader.innerHTML = `
       <div class="selection-card">
-        <h3>${title}</h3>
-        <p>${subtitle}</p>
+        <div class="selection-row">
+          <div>
+            <h3>${title}</h3>
+            <p>${subtitle}</p>
+          </div>
+          <button class="header-toggle" data-action="toggle-surah-play" aria-label="${toggleLabel} surah">
+            ${toggleIcon}
+            <span>${toggleLabel}</span>
+          </button>
+        </div>
       </div>
     `;
     return;
@@ -415,6 +633,55 @@ function buildNowPlayingLabel(state: AppState) {
     return `${chapter?.name_simple ?? `Surah ${verse.surah}`} • Ayah ${verse.ayah}`;
   }
   return `Juz ${state.currentSelection ?? ''} • ${verse.surah}:${verse.ayah}`;
+}
+
+function renderIcon(kind: 'play' | 'stop') {
+  if (kind === 'stop') {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M7 7h10v10H7z"></path>
+      </svg>
+    `;
+  }
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M8 5.5v13l11-6.5-11-6.5z"></path>
+    </svg>
+  `;
+}
+
+function iconBookmark() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M7 4h10a2 2 0 0 1 2 2v14l-7-4-7 4V6a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.6" />
+    </svg>
+  `;
+}
+
+function iconBookmarkFilled() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M7 4h10a2 2 0 0 1 2 2v14l-7-4-7 4V6a2 2 0 0 1 2-2z"></path>
+    </svg>
+  `;
+}
+
+function formatSpeedLabel(value: number) {
+  if (Number(value) === 1) return '1x';
+  return `${value}x`;
+}
+
+function updateAyahToggleAtIndex(state: AppState, index: number) {
+  if (index < 0) return;
+  const verse = state.verses[index];
+  if (!verse) return;
+  const card = elements.versesContainer.querySelector(`[data-verse-index="${index}"]`);
+  if (!(card instanceof HTMLElement)) return;
+  const button = card.querySelector('button[data-action="toggle-ayah-play"]');
+  if (!(button instanceof HTMLButtonElement)) return;
+  const isPlaying = Boolean(state.playbackState.isPlaying && state.activeAyahKey === verse.key);
+  button.innerHTML = `${renderIcon(isPlaying ? 'stop' : 'play')}<span class="tooltip">${isPlaying ? 'Stop' : 'Play ayah'}</span>`;
+  button.setAttribute('aria-label', isPlaying ? 'Stop ayah' : 'Play ayah');
 }
 
 function scrollActiveIntoView(index: number) {

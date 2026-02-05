@@ -31,6 +31,8 @@ export class PlayerService {
   private delayTimeoutId: number | null = null;
   private pausedPhase: PlaybackPhase = 'idle';
   private repeat = false;
+  private urduVoiceEnabled = true;
+  private playbackRate = 1;
 
   constructor() {
     this.audio.preload = 'auto';
@@ -43,6 +45,16 @@ export class PlayerService {
 
   setRepeat(value: boolean) {
     this.repeat = value;
+  }
+
+  setUrduVoiceEnabled(value: boolean) {
+    this.urduVoiceEnabled = value;
+  }
+
+  setPlaybackRate(value: number) {
+    const normalized = Number.isFinite(value) ? Math.min(Math.max(value, 0.25), 2) : 1;
+    this.playbackRate = normalized;
+    this.audio.playbackRate = normalized;
   }
 
   loadPlaylist(queue: VerseData[]) {
@@ -213,8 +225,13 @@ export class PlayerService {
     const url = buildUrl(this.arabicBase, verse.key);
     this.clearAudioHandlers();
     this.audio.src = url;
+    this.audio.playbackRate = this.playbackRate;
     this.audio.onended = () => {
       if (token !== this.playToken) return;
+      if (!this.urduVoiceEnabled) {
+        this.advance();
+        return;
+      }
       this.playUrdu(verse);
     };
     this.audio.onerror = () => {
@@ -245,6 +262,7 @@ export class PlayerService {
     const url = buildUrl(this.urduBase, verse.key);
     this.clearAudioHandlers();
     this.audio.src = url;
+    this.audio.playbackRate = this.playbackRate;
 
     const token = ++this.playToken;
     this.audio.onended = () => {
@@ -274,6 +292,10 @@ export class PlayerService {
     const verse = this.queue[this.state.currentIndex];
     if (!verse) return;
     this.emitNotice(`Arabic audio missing for ${verse.surah}:${verse.ayah}. Trying Urdu.`);
+    if (!this.urduVoiceEnabled) {
+      this.scheduleAdvance(400);
+      return;
+    }
     this.playUrdu(verse);
   }
 
