@@ -7,24 +7,52 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;600&family=Amiri:wght@400;700&family=Noto+Nastaliq+Urdu:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;600&family=Noto+Nastaliq+Urdu:wght@400;600&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="/assets/index-DalbyZ2A.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Dh52HXsZ.css">
+    <script type="module" crossorigin src="/assets/index-CQlXf3ll.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Bk9dq-UF.css">
   </head>
   <body>
     <div id="app">
+      <header class="mobile-appbar">
+        <div class="mobile-title">Quran Reader</div>
+        <div class="mobile-actions">
+          <button class="icon-button" data-action="go-dashboard" aria-label="Go to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4l8 7h-2v9h-4v-6H10v6H6v-9H4l8-7z"></path>
+            </svg>
+          </button>
+          <button class="icon-button" data-action="open-nav" aria-label="Open navigation">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"></path>
+            </svg>
+          </button>
+          <button class="icon-button" data-action="toggle-settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19.4 13.5a7.9 7.9 0 0 0 .1-1.5 7.9 7.9 0 0 0-.1-1.5l2.1-1.6-2-3.4-2.5 1a7.7 7.7 0 0 0-2.6-1.5l-.4-2.6H9l-.4 2.6a7.7 7.7 0 0 0-2.6 1.5l-2.5-1-2 3.4 2.1 1.6a7.9 7.9 0 0 0-.1 1.5 7.9 7.9 0 0 0 .1 1.5l-2.1 1.6 2 3.4 2.5-1a7.7 7.7 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.6-1.5l2.5 1 2-3.4-2.1-1.6zM12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4z"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
       <header class="app-header">
         <div>
           <h1>Quran Reader</h1>
           <p class="subtitle">Arabic recitation with Urdu translation</p>
         </div>
+        <div class="app-header-actions">
+          <button class="icon-button" data-action="go-dashboard" aria-label="Go to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4l8 7h-2v9h-4v-6H10v6H6v-9H4l8-7z"></path>
+            </svg>
+          </button>
+        </div>
       </header>
 
       <main class="layout">
         <aside class="sidebar">
-          <div class="panel">
+          <div class="panel nav-panel">
             <div class="mode-toggle">
               <button class="mode-button" data-action="switch-mode" data-mode="surah" id="modeSurah">Surah</button>
               <button class="mode-button" data-action="switch-mode" data-mode="juz" id="modeJuz">Juz</button>
@@ -34,17 +62,25 @@
             <div class="list" id="listContainer"></div>
           </div>
 
-          <div class="panel">
+          <div class="panel bookmarks-panel">
             <div class="list-header">Bookmarks</div>
             <div class="bookmark-list" id="bookmarkList"></div>
           </div>
         </aside>
 
         <section class="reader">
-          <div class="notice" id="notice"></div>
-          <div class="toast-host" id="toastHost"></div>
-          <div class="selection-header" id="selectionHeader"></div>
-          <div class="verses" id="versesContainer"></div>
+          <div class="reader-overlay hidden" id="readerOverlay">
+            <div class="spinner"></div>
+            <div class="overlay-title">Loading…</div>
+            <div class="overlay-sub">Fetching ayahs/audio…</div>
+          </div>
+          <div class="dashboard hidden" id="dashboard"></div>
+          <div class="reader-content" id="readerContent">
+            <div class="notice" id="notice"></div>
+            <div class="toast-host" id="toastHost"></div>
+            <div class="selection-header" id="selectionHeader"></div>
+            <div class="verses" id="versesContainer"></div>
+          </div>
         </section>
       </main>
 
@@ -59,6 +95,26 @@
           </button>
         </div>
         <div class="settings-content" id="settingsContent"></div>
+      </aside>
+
+      <div class="mobile-nav-overlay hidden" id="mobileNavOverlay" data-action="close-nav"></div>
+      <aside class="mobile-nav hidden" id="mobileNav">
+        <div class="mobile-nav-header">
+          <h3>Navigate</h3>
+          <button class="icon-button" data-action="close-nav" aria-label="Close navigation">
+            ✕
+          </button>
+        </div>
+        <div class="mobile-tabs">
+          <button class="tab-button" id="mobileTabSurah" data-action="mobile-tab" data-tab="surah">Surah</button>
+          <button class="tab-button" id="mobileTabJuz" data-action="mobile-tab" data-tab="juz">Juz</button>
+          <button class="tab-button" id="mobileTabBookmarks" data-action="mobile-tab" data-tab="bookmarks">Bookmarks</button>
+        </div>
+        <div class="mobile-tab-panels">
+          <div class="mobile-tab-panel" id="mobileSurahList"></div>
+          <div class="mobile-tab-panel" id="mobileJuzList"></div>
+          <div class="mobile-tab-panel" id="mobileBookmarkList"></div>
+        </div>
       </aside>
     </div>
 
