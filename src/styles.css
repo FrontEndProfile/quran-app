@@ -1153,34 +1153,43 @@ button:disabled {
   font-weight: 600;
 }
 
-.toggle-switch {
+.settings-row .toggle-switch {
   position: relative;
-  width: 42px;
+  width: 44px;
   height: 24px;
+  padding: 0;
   border-radius: 999px;
-  background: rgba(192, 107, 52, 0.2);
+  background: rgba(192, 107, 52, 0.18);
   border: 1px solid rgba(192, 107, 52, 0.4);
   display: inline-flex;
   align-items: center;
-  padding: 2px;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.toggle-switch .toggle-dot {
+.settings-row .toggle-switch .toggle-dot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
   width: 18px;
   height: 18px;
   background: #fff;
   border-radius: 999px;
   transition: transform 0.2s ease;
+  box-shadow: 0 2px 6px rgba(34, 24, 14, 0.2);
 }
 
-.toggle-switch.on {
+.settings-row .toggle-switch.on {
   background: rgba(192, 107, 52, 0.45);
   border-color: rgba(192, 107, 52, 0.6);
 }
 
-.toggle-switch.on .toggle-dot {
-  transform: translateX(18px);
+.settings-row .toggle-switch.on .toggle-dot {
+  transform: translateX(22px);
 }
 
 .stepper {
