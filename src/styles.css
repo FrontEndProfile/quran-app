@@ -149,6 +149,7 @@ body.player-visible {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: scroll;
 }
 
 .nav-panel {
