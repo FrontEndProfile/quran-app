@@ -678,6 +678,7 @@ function renderVerseRow(verse: VerseData, index: number, state: AppState, curren
   const arabicText = getArabicText(verse, script);
   const isTajweed = script === 'tajweed' && Boolean(verse.arabicTajweed);
   const arabic = isTajweed ? wrapWordsFromHtml(arabicText) : wrapWords(arabicText);
+  const scriptClass = script === 'indopak' ? 'is-indopak' : script === 'tajweed' ? 'is-tajweed' : '';
   const urdu = wrapWords(verse.urduText);
   const ayahId = `ayah-${pad3(verse.surah)}${pad3(verse.ayah)}`;
 
@@ -702,7 +703,7 @@ function renderVerseRow(verse: VerseData, index: number, state: AppState, curren
         <span>${label}</span>
         <span class="playing-indicator">Playing</span>
       </div>
-      <div class="verse-arabic" dir="rtl" lang="ar">${arabic.html}</div>
+      <div class="verse-arabic qr-arabic ${scriptClass}" dir="rtl" lang="ar">${arabic.html}</div>
       <div class="verse-urdu" dir="rtl" lang="ur">${urdu.html}</div>
     </div>
   `;
@@ -729,7 +730,7 @@ function renderSelectionHeader(state: AppState) {
       <div class="selection-card">
         <div class="selection-row">
           <div>
-            <h3>${title}</h3>
+            <h3 class="qr-surah-title">${title}</h3>
             <p>${subtitle}</p>
           </div>
           <button class="header-toggle" data-action="toggle-surah-play" aria-label="${toggleLabel} surah">
