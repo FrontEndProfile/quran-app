@@ -16,6 +16,11 @@
       <header class="mobile-appbar">
         <div class="mobile-title">Quran Reader</div>
         <div class="mobile-actions">
+          <button class="icon-button" data-action="go-dashboard" aria-label="Go to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4l8 7h-2v9h-4v-6H10v6H6v-9H4l8-7z"></path>
+            </svg>
+          </button>
           <button class="icon-button" data-action="open-nav" aria-label="Open navigation">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"></path>
@@ -33,6 +38,13 @@
         <div>
           <h1>Quran Reader</h1>
           <p class="subtitle">Arabic recitation with Urdu translation</p>
+        </div>
+        <div class="app-header-actions">
+          <button class="icon-button" data-action="go-dashboard" aria-label="Go to dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4l8 7h-2v9h-4v-6H10v6H6v-9H4l8-7z"></path>
+            </svg>
+          </button>
         </div>
       </header>
 
@@ -60,11 +72,13 @@
             <div class="overlay-title">Loading…</div>
             <div class="overlay-sub">Fetching ayahs/audio…</div>
           </div>
-          <div class="notice" id="notice"></div>
-          <div class="toast-host" id="toastHost"></div>
-          <div class="selection-header" id="selectionHeader"></div>
-          <div class="verses" id="versesContainer"></div>
-
+          <div class="dashboard hidden" id="dashboard"></div>
+          <div class="reader-content" id="readerContent">
+            <div class="notice" id="notice"></div>
+            <div class="toast-host" id="toastHost"></div>
+            <div class="selection-header" id="selectionHeader"></div>
+            <div class="verses" id="versesContainer"></div>
+          </div>
         </section>
       </main>
 

@@ -1,4 +1,6 @@
 export const elements = {
+  dashboard: document.getElementById('dashboard') as HTMLDivElement,
+  readerContent: document.getElementById('readerContent') as HTMLDivElement,
   modeSurah: document.getElementById('modeSurah') as HTMLButtonElement,
   modeJuz: document.getElementById('modeJuz') as HTMLButtonElement,
   listHeader: document.getElementById('listHeader') as HTMLDivElement,

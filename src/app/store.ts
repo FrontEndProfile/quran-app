@@ -1,6 +1,8 @@
 import type { Bookmark, Chapter, PlaybackScope, PlaybackState, Settings, TabMode, VerseData } from '../types';
 
 export interface AppState {
+  viewMode: 'dashboard' | 'reader';
+  dashboardTab: 'surah' | 'juz';
   currentMode: TabMode;
   currentSelection: number | null;
   verses: VerseData[];

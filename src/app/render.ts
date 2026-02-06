@@ -1,7 +1,7 @@
 import { ARABIC_RECITERS, URDU_TRANSLATOR_NAME, URDU_VOICE_NAME } from '../constants';
 import type { AppState } from './store';
 import { isBookmarked, sortBookmarks } from './bookmarks';
-import type { Bookmark, VerseData, Settings } from '../types';
+import type { Bookmark, VerseData, Settings, Chapter } from '../types';
 import { elements } from './elements';
 
 let lastActiveIndex = -1;
@@ -212,6 +212,67 @@ function iconGear() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M19.4 13.5a7.9 7.9 0 0 0 .1-1.5 7.9 7.9 0 0 0-.1-1.5l2.1-1.6-2-3.4-2.5 1a7.7 7.7 0 0 0-2.6-1.5l-.4-2.6H9l-.4 2.6a7.7 7.7 0 0 0-2.6 1.5l-2.5-1-2 3.4 2.1 1.6a7.9 7.9 0 0 0-.1 1.5 7.9 7.9 0 0 0 .1 1.5l-2.1 1.6 2 3.4 2.5-1a7.7 7.7 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.6-1.5l2.5 1 2-3.4-2.1-1.6zM12 15.2A3.2 3.2 0 1 1 12 8.8a3.2 3.2 0 0 1 0 6.4z"></path>
     </svg>
+  `;
+}
+
+export function renderDashboard(state: AppState) {
+  const last = getLastRead(state.bookmarks, state.chapters);
+  const tabs = `
+    <div class="dash-tabs">
+      <button class="dash-tab ${state.dashboardTab === 'surah' ? 'active' : ''}" data-action="dash-tab" data-tab="surah">Surah</button>
+      <button class="dash-tab ${state.dashboardTab === 'juz' ? 'active' : ''}" data-action="dash-tab" data-tab="juz">Parah (Juz)</button>
+    </div>
+  `;
+
+  const surahCards = state.chapters
+    .map((chapter) => {
+      return `
+        <button class="dash-card" data-action="dash-open-surah" data-number="${chapter.id}">
+          <div class="dash-badge">${chapter.id}</div>
+          <div class="dash-card-body">
+            <div class="dash-title">${chapter.name_simple}</div>
+            <div class="dash-sub">${chapter.verses_count} ayahs</div>
+          </div>
+          <div class="dash-arabic" dir="rtl" lang="ar">${chapter.name_arabic}</div>
+        </button>
+      `;
+    })
+    .join('');
+
+  const juzCards = Array.from({ length: 30 }, (_, index) => {
+    const juzNumber = index + 1;
+    return `
+      <button class="dash-card" data-action="dash-open-juz" data-number="${juzNumber}">
+        <div class="dash-badge">${juzNumber}</div>
+        <div class="dash-card-body">
+          <div class="dash-title">Juz ${juzNumber}</div>
+          <div class="dash-sub">Parah ${juzNumber}</div>
+        </div>
+      </button>
+    `;
+  }).join('');
+
+  elements.dashboard.innerHTML = `
+    <div class="dash-hero">
+      <div class="hero-card">
+        <div class="hero-label">Listen</div>
+        <div class="hero-title">Quran e Pak</div>
+        <div class="hero-sub">Online</div>
+      </div>
+      <div class="hero-card last-read">
+        <div class="hero-label">Last Read</div>
+        <div class="hero-title">${last?.title ?? 'No recent read'}</div>
+        <div class="hero-sub">${last?.subtitle ?? ''}</div>
+        ${last ? `<button class="hero-action" data-action="dash-open-last" data-mode="${last.mode}" data-surah="${last.surah}" data-ayah="${last.ayah}" data-juz="${last.juz ?? ''}">Continue</button>` : ''}
+      </div>
+    </div>
+    ${tabs}
+    <div class="dash-grid ${state.dashboardTab === 'surah' ? 'active' : ''}" data-tab-panel="surah">
+      ${surahCards}
+    </div>
+    <div class="dash-grid ${state.dashboardTab === 'juz' ? 'active' : ''}" data-tab-panel="juz">
+      ${juzCards}
+    </div>
   `;
 }
 
@@ -1001,4 +1062,19 @@ function formatTimestamp(value: number) {
   } catch {
     return '';
   }
+}
+
+function getLastRead(bookmarks: Bookmark[], chapters: Chapter[]) {
+  if (!bookmarks.length) return null;
+  const sorted = sortBookmarks(bookmarks);
+  const last = sorted[0];
+  const chapter = chapters.find((item) => item.id === last.surahNumber);
+  return {
+    mode: last.mode,
+    surah: last.surahNumber,
+    ayah: last.ayahNumber,
+    juz: last.juzNumber,
+    title: chapter ? chapter.name_simple : `Surah ${last.surahNumber}`,
+    subtitle: `Ayah ${last.ayahNumber}`
+  };
 }

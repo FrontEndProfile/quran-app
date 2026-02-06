@@ -11,10 +11,12 @@ import {
 } from './constants';
 import type { Chapter, Settings, TabMode, VerseApi, VerseData } from './types';
 import { createStore } from './app/store';
+import { elements } from './app/elements';
 import {
   clearActiveAyahUI,
   markUserScroll,
   renderPlayerBar,
+  renderDashboard,
   renderNotice,
   renderSettingsPanel,
   renderSidebar,
@@ -33,6 +35,8 @@ const player = new PlayerService();
 const settingsService = new SettingsService();
 
 const store = createStore({
+  viewMode: 'dashboard',
+  dashboardTab: 'surah',
   currentMode: 'surah' as TabMode,
   currentSelection: null,
   verses: [],
@@ -209,6 +213,7 @@ function handleClick(event: Event) {
     if (mode && mode !== store.getState().currentMode) {
       store.update((state) => ({ ...state, currentMode: mode }));
       renderSidebar(store.getState());
+      renderDashboard(store.getState());
     }
     return;
   }
@@ -219,6 +224,8 @@ function handleClick(event: Event) {
     if (!Number.isFinite(number)) return;
     player.stop();
     renderPlayerBar(store.getState());
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
     loadSelection(mode, number, undefined, false);
     return;
   }
@@ -249,6 +256,8 @@ function handleClick(event: Event) {
       renderNotice(store.getState());
       return;
     }
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
     loadSelection(mode, number, undefined, true, mode === 'surah' ? 'surah' : 'ayah');
     return;
   }
@@ -281,6 +290,8 @@ function handleClick(event: Event) {
     renderMobileNav(store.getState());
     player.stop();
     renderPlayerBar(store.getState());
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
     loadSelection(mode, number, undefined, false, undefined, true);
     return;
   }
@@ -291,6 +302,8 @@ function handleClick(event: Event) {
     if (!Number.isFinite(number)) return;
     store.update((state) => ({ ...state, mobileNavOpen: false }));
     renderMobileNav(store.getState());
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
     loadSelection(mode, number, undefined, true, mode === 'surah' ? 'surah' : 'ayah', true);
     return;
   }
@@ -455,6 +468,7 @@ function handleClick(event: Event) {
     store.update((state) => ({ ...state, bookmarks: next }));
     renderSidebar(store.getState());
     renderMobileNav(store.getState());
+    renderDashboard(store.getState());
     renderVerses(store.getState());
     updateActiveAyahUI(store.getState());
     return;
@@ -470,6 +484,8 @@ function handleClick(event: Event) {
     const selectionNumber = mode === 'surah' ? surah : juz;
     if (!Number.isFinite(selectionNumber)) return;
 
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
     loadSelection(mode, selectionNumber, { surah, ayah }, true, 'ayah');
     return;
   }
@@ -484,6 +500,8 @@ function handleClick(event: Event) {
     if (!Number.isFinite(selectionNumber)) return;
     store.update((state) => ({ ...state, mobileNavOpen: false }));
     renderMobileNav(store.getState());
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
     loadSelection(mode, selectionNumber, { surah, ayah }, false, 'ayah', true);
     return;
   }
@@ -498,17 +516,70 @@ function handleClick(event: Event) {
     if (!Number.isFinite(selectionNumber)) return;
     store.update((state) => ({ ...state, mobileNavOpen: false }));
     renderMobileNav(store.getState());
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
     loadSelection(mode, selectionNumber, { surah, ayah }, true, 'ayah', true);
+    return;
+  }
+
+  if (action === 'dash-tab') {
+    const tab = actionEl?.dataset.tab as 'surah' | 'juz' | undefined;
+    if (!tab) return;
+    store.update((state) => ({ ...state, dashboardTab: tab }));
+    renderDashboard(store.getState());
+    return;
+  }
+
+  if (action === 'dash-open-surah') {
+    const number = Number(actionEl?.dataset.number);
+    if (!Number.isFinite(number)) return;
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
+    loadSelection('surah', number, undefined, false, undefined, true);
+    return;
+  }
+
+  if (action === 'dash-open-juz') {
+    const number = Number(actionEl?.dataset.number);
+    if (!Number.isFinite(number)) return;
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
+    loadSelection('juz', number, undefined, false, undefined, true);
+    return;
+  }
+
+  if (action === 'dash-open-last') {
+    const mode = (actionEl?.dataset.mode as TabMode) ?? 'surah';
+    const surah = Number(actionEl?.dataset.surah);
+    const ayah = Number(actionEl?.dataset.ayah);
+    const juz = Number(actionEl?.dataset.juz);
+    if (!Number.isFinite(surah) || !Number.isFinite(ayah)) return;
+    const selectionNumber = mode === 'surah' ? surah : juz;
+    if (!Number.isFinite(selectionNumber)) return;
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
+    loadSelection(mode, selectionNumber, { surah, ayah }, false, 'ayah', true);
+    return;
+  }
+
+  if (action === 'go-dashboard') {
+    store.update((state) => ({ ...state, viewMode: 'dashboard' }));
+    updateViewVisibility();
     return;
   }
 
   if (action === 'toggle-surah-play') {
     const state = store.getState();
-    if (state.currentMode !== 'surah' || !state.currentSelection) return;
+    if (!state.currentSelection) return;
+    const targetSurah =
+      state.currentMode === 'surah'
+        ? state.currentSelection
+        : state.verses[0]?.surah ?? null;
+    if (!targetSurah) return;
     const isSurahPlaying = Boolean(
       state.playbackState.isPlaying &&
       state.playbackScope === 'surah' &&
-      state.activeSurahNumber === state.currentSelection
+      state.activeSurahNumber === targetSurah
     );
     if (isSurahPlaying) {
       player.stop();
@@ -526,7 +597,9 @@ function handleClick(event: Event) {
       return;
     }
 
-    loadSelection('surah', state.currentSelection, undefined, true, 'surah');
+    store.update((state) => ({ ...state, viewMode: 'reader' }));
+    updateViewVisibility();
+    loadSelection(state.currentMode, state.currentSelection, undefined, true, 'surah');
     return;
   }
 
@@ -584,6 +657,14 @@ function handleChange(event: Event) {
   }
 }
 
+function updateViewVisibility() {
+  const { viewMode } = store.getState();
+  elements.dashboard.classList.toggle('hidden', viewMode !== 'dashboard');
+  elements.readerContent.classList.toggle('hidden', viewMode !== 'reader');
+  document.body.classList.toggle('dashboard-mode', viewMode === 'dashboard');
+  elements.playerBar.classList.toggle('hidden', viewMode === 'dashboard');
+}
+
 async function init() {
   applyFontSizes(store.getState().settings.arabicFontPx, store.getState().settings.urduFontPx);
   applyTheme(store.getState().settings.theme);
@@ -625,6 +706,8 @@ async function init() {
     renderSettingsPanel(store.getState());
     renderMobileNav(store.getState());
     renderReaderOverlay(store.getState());
+    renderDashboard(store.getState());
+    updateViewVisibility();
     renderVerses(store.getState());
     renderNotice(store.getState());
   }
@@ -643,6 +726,7 @@ player.subscribe((playbackState) => {
     }));
   }
   renderPlayerBar(store.getState());
+  renderDashboard(store.getState());
   renderMobileNav(store.getState());
   renderReaderOverlay(store.getState());
   updateActiveAyahUI(store.getState());
