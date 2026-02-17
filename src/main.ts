@@ -29,6 +29,7 @@ import {
   updateWordHighlightByProgress
 } from './app/render';
 import { loadBookmarks, saveBookmarks, toggleBookmark } from './app/bookmarks';
+import { applySEO, normalizeCurrentPath, parseRouteFromPath, routeToPath, SITE_URL, type SeoRoute } from './seo';
 
 const api = new QuranTextService();
 const player = new PlayerService();
@@ -61,6 +62,53 @@ const store = createStore({
 });
 
 let overlayTimer: number | null = null;
+type HistoryMode = 'push' | 'replace' | 'none';
+
+function getSurahNameById(surahId: number): string | undefined {
+  return store.getState().chapters.find((chapter) => chapter.id === surahId)?.name_simple;
+}
+
+function buildSeoRouteFromState(explicitAyah?: number): SeoRoute {
+  const state = store.getState();
+  if (state.viewMode === 'dashboard') {
+    if (state.dashboardTab === 'juz') return { kind: 'juz-list' };
+    return { kind: 'surah-list' };
+  }
+
+  if (state.currentMode === 'surah' && state.currentSelection) {
+    const route: Extract<SeoRoute, { kind: 'surah-detail' }> = {
+      kind: 'surah-detail',
+      surahId: state.currentSelection,
+      surahName: getSurahNameById(state.currentSelection)
+    };
+    if (explicitAyah && explicitAyah > 0) {
+      route.ayah = explicitAyah;
+    }
+    return route;
+  }
+
+  if (state.currentMode === 'juz' && state.currentSelection) {
+    return { kind: 'juz-detail', juzId: state.currentSelection };
+  }
+
+  return { kind: 'home' };
+}
+
+function syncRouteAndSeo(options: { historyMode?: HistoryMode; route?: SeoRoute; explicitAyah?: number } = {}) {
+  const { historyMode = 'none', explicitAyah } = options;
+  const route = options.route ?? buildSeoRouteFromState(explicitAyah);
+  const targetPath = routeToPath(route);
+
+  if (historyMode !== 'none' && window.location.pathname !== targetPath) {
+    if (historyMode === 'replace') {
+      window.history.replaceState(window.history.state, '', targetPath);
+    } else {
+      window.history.pushState(window.history.state, '', targetPath);
+    }
+  }
+
+  applySEO(route, { siteUrl: SITE_URL });
+}
 
 function applyFontSizes(arabic: number, urdu: number) {
   document.documentElement.style.setProperty('--arabic-size', `${arabic}px`);
@@ -81,16 +129,25 @@ async function loadSelection(
   startAt?: { surah: number; ayah: number },
   autoplay = false,
   scopeOverride?: 'surah' | 'ayah',
-  scrollToTop = false
+  scrollToTop = false,
+  historyMode: HistoryMode = 'push',
+  seoAyah?: number
 ) {
   if (autoplay) {
     renderPlayerBar(store.getState());
   }
 
+  store.update((state) => ({
+    ...state,
+    currentMode: mode,
+    currentSelection: number
+  }));
+
   const translationId = store.getState().translationId;
   if (!translationId) {
     store.update((current) => ({ ...current, error: 'Urdu translation not found.' }));
     renderNotice(store.getState());
+    syncRouteAndSeo({ historyMode, explicitAyah: seoAyah });
     return;
   }
 
@@ -185,6 +242,7 @@ async function loadSelection(
     if (scrollToTop) {
       scrollReaderToTop();
     }
+    syncRouteAndSeo({ historyMode, explicitAyah: seoAyah });
   }
 }
 
@@ -329,6 +387,7 @@ function handleClick(event: Event) {
     }));
     clearActiveAyahUI();
     renderPlayerBar(store.getState());
+    syncRouteAndSeo({ historyMode: 'replace' });
     return;
   }
 
@@ -431,6 +490,7 @@ function handleClick(event: Event) {
       clearActiveAyahUI();
       renderPlayerBar(store.getState());
       renderVerses(store.getState());
+      syncRouteAndSeo({ historyMode: 'replace' });
       return;
     }
 
@@ -447,6 +507,11 @@ function handleClick(event: Event) {
     }));
     renderPlayerBar(store.getState());
     renderVerses(store.getState());
+    if (store.getState().currentMode === 'surah') {
+      syncRouteAndSeo({ historyMode: 'push', explicitAyah: verse.ayah });
+    } else {
+      syncRouteAndSeo({ historyMode: 'replace' });
+    }
     return;
   }
 
@@ -486,7 +551,16 @@ function handleClick(event: Event) {
 
     store.update((state) => ({ ...state, viewMode: 'reader' }));
     updateViewVisibility();
-    loadSelection(mode, selectionNumber, { surah, ayah }, true, 'ayah');
+    loadSelection(
+      mode,
+      selectionNumber,
+      { surah, ayah },
+      true,
+      'ayah',
+      false,
+      'push',
+      mode === 'surah' ? ayah : undefined
+    );
     return;
   }
 
@@ -502,7 +576,16 @@ function handleClick(event: Event) {
     renderMobileNav(store.getState());
     store.update((state) => ({ ...state, viewMode: 'reader' }));
     updateViewVisibility();
-    loadSelection(mode, selectionNumber, { surah, ayah }, false, 'ayah', true);
+    loadSelection(
+      mode,
+      selectionNumber,
+      { surah, ayah },
+      false,
+      'ayah',
+      true,
+      'push',
+      mode === 'surah' ? ayah : undefined
+    );
     return;
   }
 
@@ -518,7 +601,16 @@ function handleClick(event: Event) {
     renderMobileNav(store.getState());
     store.update((state) => ({ ...state, viewMode: 'reader' }));
     updateViewVisibility();
-    loadSelection(mode, selectionNumber, { surah, ayah }, true, 'ayah', true);
+    loadSelection(
+      mode,
+      selectionNumber,
+      { surah, ayah },
+      true,
+      'ayah',
+      true,
+      'push',
+      mode === 'surah' ? ayah : undefined
+    );
     return;
   }
 
@@ -527,6 +619,7 @@ function handleClick(event: Event) {
     if (!tab) return;
     store.update((state) => ({ ...state, dashboardTab: tab }));
     renderDashboard(store.getState());
+    syncRouteAndSeo({ historyMode: 'push' });
     return;
   }
 
@@ -558,13 +651,23 @@ function handleClick(event: Event) {
     if (!Number.isFinite(selectionNumber)) return;
     store.update((state) => ({ ...state, viewMode: 'reader' }));
     updateViewVisibility();
-    loadSelection(mode, selectionNumber, { surah, ayah }, false, 'ayah', true);
+    loadSelection(
+      mode,
+      selectionNumber,
+      { surah, ayah },
+      false,
+      'ayah',
+      true,
+      'push',
+      mode === 'surah' ? ayah : undefined
+    );
     return;
   }
 
   if (action === 'go-dashboard') {
     store.update((state) => ({ ...state, viewMode: 'dashboard' }));
     updateViewVisibility();
+    syncRouteAndSeo({ historyMode: 'push' });
     return;
   }
 
@@ -594,6 +697,7 @@ function handleClick(event: Event) {
       renderPlayerBar(store.getState());
       renderVerses(store.getState());
       renderNotice(store.getState());
+      syncRouteAndSeo({ historyMode: 'replace' });
       return;
     }
 
@@ -665,6 +769,74 @@ function updateViewVisibility() {
   elements.playerBar.classList.toggle('hidden', viewMode === 'dashboard');
 }
 
+async function applyRouteFromLocation() {
+  const normalized = normalizeCurrentPath();
+  const route = parseRouteFromPath(normalized);
+
+  if (route.kind === 'home') {
+    store.update((state) => ({
+      ...state,
+      viewMode: 'dashboard',
+      dashboardTab: 'surah',
+      currentMode: 'surah'
+    }));
+    updateViewVisibility();
+    renderSidebar(store.getState());
+    renderDashboard(store.getState());
+    renderMobileNav(store.getState());
+    renderVerses(store.getState());
+    syncRouteAndSeo({ historyMode: 'replace', route });
+    return;
+  }
+
+  if (route.kind === 'surah-list' || route.kind === 'juz-list') {
+    const tab = route.kind === 'surah-list' ? 'surah' : 'juz';
+    store.update((state) => ({
+      ...state,
+      viewMode: 'dashboard',
+      dashboardTab: tab,
+      currentMode: tab
+    }));
+    updateViewVisibility();
+    renderSidebar(store.getState());
+    renderDashboard(store.getState());
+    renderMobileNav(store.getState());
+    renderVerses(store.getState());
+    syncRouteAndSeo({ historyMode: 'replace', route });
+    return;
+  }
+
+  if (route.kind === 'surah-detail') {
+    store.update((state) => ({
+      ...state,
+      viewMode: 'reader',
+      currentMode: 'surah'
+    }));
+    updateViewVisibility();
+    await loadSelection(
+      'surah',
+      route.surahId,
+      route.ayah ? { surah: route.surahId, ayah: route.ayah } : undefined,
+      false,
+      route.ayah ? 'ayah' : undefined,
+      true,
+      'replace',
+      route.ayah
+    );
+    return;
+  }
+
+  if (route.kind === 'juz-detail') {
+    store.update((state) => ({
+      ...state,
+      viewMode: 'reader',
+      currentMode: 'juz'
+    }));
+    updateViewVisibility();
+    await loadSelection('juz', route.juzId, undefined, false, undefined, true, 'replace');
+  }
+}
+
 async function init() {
   applyFontSizes(store.getState().settings.arabicFontPx, store.getState().settings.urduFontPx);
   applyTheme(store.getState().settings.theme);
@@ -711,6 +883,8 @@ async function init() {
     renderVerses(store.getState());
     renderNotice(store.getState());
   }
+
+  await applyRouteFromLocation();
 }
 
 player.subscribe((playbackState) => {
@@ -758,6 +932,9 @@ settingsService.subscribe((settings) => {
 window.addEventListener('click', handleClick);
 window.addEventListener('change', handleChange);
 window.addEventListener('scroll', markUserScroll, { passive: true });
+window.addEventListener('popstate', () => {
+  void applyRouteFromLocation();
+});
 window.addEventListener('beforeunload', () => player.stop());
 
 init();
