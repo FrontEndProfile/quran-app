@@ -30,6 +30,7 @@ import {
 } from './app/render';
 import { loadBookmarks, saveBookmarks, toggleBookmark } from './app/bookmarks';
 import { applySEO, normalizeCurrentPath, parseRouteFromPath, routeToPath, SITE_URL, type SeoRoute } from './seo';
+import { initPwaInstallPrompt } from './pwaInstall';
 
 const api = new QuranTextService();
 const player = new PlayerService();
@@ -937,4 +938,5 @@ window.addEventListener('popstate', () => {
 });
 window.addEventListener('beforeunload', () => player.stop());
 
+initPwaInstallPrompt();
 init();

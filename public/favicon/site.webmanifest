@@ -1,6 +1,10 @@
 {
   "name": "Quran Reader",
-  "short_name": "Quran Reader",
+  "short_name": "Quran",
+  "id": "/",
+  "description": "Quran ayah-by-ayah player with Arabic recitation and Urdu translation audio.",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/favicon/web-app-manifest-192x192.png",
@@ -15,7 +19,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#1b2a20",
+  "background_color": "#f4eee4",
   "display": "standalone"
 }

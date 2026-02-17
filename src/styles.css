@@ -1355,3 +1355,61 @@ button:disabled {
     display: none;
   }
 }
+
+.install-prompt {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--player-bar-height) + 16px);
+  width: min(360px, calc(100vw - 24px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+  z-index: 95;
+}
+
+body.dashboard-mode .install-prompt {
+  bottom: 16px;
+}
+
+.install-prompt.hidden {
+  display: none;
+}
+
+.install-prompt-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.install-prompt-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.install-prompt-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.install-btn {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-strong);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.install-btn.install-btn-primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
