@@ -1,4 +1,5 @@
 export const SITE_URL = 'https://quran.asmco.company';
+const OG_IMAGE_PATH = '/og-image.svg';
 
 export type SeoRoute =
   | { kind: 'home' }
@@ -286,6 +287,7 @@ export function applySEO(route: SeoRoute, options: SeoApplyOptions = {}) {
   const siteUrl = options.siteUrl ?? SITE_URL;
   const meta = buildMeta(route);
   const canonicalUrl = getCanonicalUrl(siteUrl, route);
+  const ogImageUrl = `${siteUrl.replace(/\/+$/, '')}${OG_IMAGE_PATH}`;
 
   clearSeoTags();
   document.title = meta.title;
@@ -301,11 +303,14 @@ export function applySEO(route: SeoRoute, options: SeoApplyOptions = {}) {
   appendMeta('property', 'og:description', meta.description);
   appendMeta('property', 'og:url', canonicalUrl);
   appendMeta('property', 'og:locale', 'en_US');
+  appendMeta('property', 'og:image', ogImageUrl);
+  appendMeta('property', 'og:image:alt', 'Quran Urdu Player - Arabic recitation and Urdu translation audio');
 
   appendMeta('name', 'twitter:card', 'summary');
   appendMeta('name', 'twitter:title', meta.title);
   appendMeta('name', 'twitter:description', meta.description);
   appendMeta('name', 'twitter:url', canonicalUrl);
+  appendMeta('name', 'twitter:image', ogImageUrl);
 
   injectJsonLd(route, canonicalUrl, siteUrl);
 }

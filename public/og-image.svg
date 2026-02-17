@@ -1,0 +1,18 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B2A20"/>
+      <stop offset="1" stop-color="#2C4A35"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="56" y="56" width="1088" height="518" rx="24" fill="#F8F3E9" fill-opacity="0.08" stroke="#E5D9C5" stroke-opacity="0.25"/>
+  <text x="96" y="230" fill="#F6EBD8" font-family="Georgia, serif" font-size="72" font-weight="700">Quran Urdu Player</text>
+  <text x="96" y="300" fill="#E5D9C5" font-family="Arial, sans-serif" font-size="34">
+    Arabic recitation + Urdu tarjuma audio
+  </text>
+  <text x="96" y="352" fill="#E5D9C5" font-family="Arial, sans-serif" font-size="30">
+    Surah | Juz | Ayah by Ayah Playback
+  </text>
+  <text x="96" y="532" fill="#D2C2A7" font-family="Arial, sans-serif" font-size="28">quran.asmco.company</text>
+</svg>
